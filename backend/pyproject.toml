@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "crossposter"
+version = "0.1.0"
+description = ""
+authors = ["Laurie Voss <github@seldo.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.115.6"
+uvicorn = "^0.34.0"
+llama-index-utils-workflow = "^0.3.0"
+llama-index-core = "^0.12.6"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
