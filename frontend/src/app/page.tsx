@@ -1,12 +1,26 @@
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
-
+import { AuthButtons } from '@/components/AuthButtons'
+import { SignOutButton } from '@/components/SignOutButton'
 export default function Home() {
   const { data: session, status } = useSession();
   const [draftText, setDraftText] = useState('');
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [file, setFile] = useState<File | null>(null);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    if (session) {
+      const fetchUser = async () => {
+        const response = await fetch('/api/user/fetch');
+        const userData = await response.json();
+        setUser(userData);
+      };
+      fetchUser();
+    }
+  }, [session]);
 
   // If loading, you might want to show a loading state
   if (status === "loading") {
@@ -45,8 +59,25 @@ export default function Home() {
         const eventsList = document.getElementById('draftingEventsList');
         if (eventsList) {
           const li = document.createElement('li');
-          li.textContent = event.data;
+          const data = JSON.parse(event.data);
+          li.textContent = data.msg;
+          
+          // Add new item
           eventsList.appendChild(li);
+          
+          // Keep only last 4 items
+          while (eventsList.children.length > 4) {
+            const firstChild = eventsList.firstChild;
+            if (firstChild) {
+              eventsList.removeChild(firstChild);
+            }
+          }
+
+          // Check if workflow is complete
+          if (data.msg === 'Workflow completed') {
+            eventSource.close();
+            setDrafts(data.result);
+          }
         }
       };
 
@@ -60,9 +91,33 @@ export default function Home() {
     }
   };
 
+  const handlePost = async (platform: string, draft: string) => {
+    console.log("File is", file)
+
+    try {
+      const formData = new FormData();
+      formData.append('text', draft);
+      if (file) {
+        formData.append('media', file);
+      }
+
+      const response = await fetch(`/api/post`, {
+        method: 'POST',
+        body: formData
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      console.log(`Successfully posted to ${platform}`);
+    } catch (error) {
+      console.error(`Error posting to ${platform}:`, error);
+    }
+  };
+
   return (
     <>
       <h1>Cross-Poster</h1>
+      <AuthButtons user={user} />
       <div className="createDraftsBox">
         <div className="container">
           <div className="enterText">
@@ -114,6 +169,29 @@ export default function Home() {
         <div id="draftingEvents">
           <ul id="draftingEventsList"></ul>
         </div>
+        <div id="drafts">
+          {Object.entries(drafts).map(([platform, draft]) => (
+            <div key={platform} className="draft">
+              <h3>{platform}</h3>
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                await handlePost(platform, draft);
+              }}>
+                <div className="draftText">
+                  <textarea 
+                    name="text"
+                    value={draft}
+                    readOnly
+                  />
+                  <button type="submit">Post to {platform}</button>
+                </div>
+              </form>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="signOutButton">
+        <SignOutButton />
       </div>
     </>
   );

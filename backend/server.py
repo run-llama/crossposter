@@ -32,14 +32,15 @@ async def create_drafts(request: Request):
     text = data.get("text", "")
 
     w = CrossPosterWorkflow(timeout=30, verbose=True)
-    handler = w.run(first_input="Start the workflow.")
+    handler = w.run(text=text)
 
     async def event_generator():
         async for event in handler.stream_events():
             if isinstance(event, ProgressEvent):
+                print(event.msg)
                 yield f"data: {json.dumps({'msg': event.msg})}\n\n"
             elif isinstance(event, StopEvent):
-                yield f"data: {json.dumps({'msg': 'Workflow completed'})}\n\n"
+                yield f"data: {json.dumps({'msg': 'Workflow completed', 'result': event.result})}\n\n"
             else:
                 yield f"data: {json.dumps({'msg': 'Unknown event type'})}\n\n"
 

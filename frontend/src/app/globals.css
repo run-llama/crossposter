@@ -2,10 +2,6 @@ body {
   font-family: var(--font-geist-sans);
 }
 
-.createDraftsBox {
-  
-}
-
 .createDraftsBox .container {
   display: flex;
   gap: 2rem;
@@ -57,7 +53,7 @@ label {
   justify-content: center;
 }
 
-.createDraftButton button {
+button {
   padding: 0.75rem 1.5rem;
   font-size: 1rem;
   background-color: #0070f3;
@@ -68,6 +64,23 @@ label {
   transition: background-color 0.2s;
 }
 
-.createDraftButton button:hover {
+button:hover {
   background-color: #0051b3;
+}
+
+.draftText {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+.draftText textarea {
+  width: 50%;
+  min-height: 10em;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-family: inherit;
+  resize: vertical;
 }
