@@ -26,39 +26,46 @@ export async function POST(req: Request, res: Response) {
     const formData = await req.formData();
     const text = formData.get('text') as string;
     const media = formData.get('media') as File;
+    const platform = formData.get('platform') as string;
 
     console.log("Attached Media", media)
 
-    const twitterToken = JSON.parse(user.twitter_token)
+    let result = null;
+    switch (platform) {
+      case "twitter":
+        const twitterToken = JSON.parse(user.twitter_token)
 
-    //const twitterClient = new TwitterApi(user.twitter_token);
-    const twitterClient = new TwitterApi({
-      appKey: process.env.TWITTER_OAUTH_1_KEY,
-      appSecret: process.env.TWITTER_OAUTH_1_SECRET,
-      accessToken: twitterToken.token,
-      accessSecret: twitterToken.secret,
-    });
-
-    console.log("Twitter user", await twitterClient.v2.me())
-
-    let mediaBuffer;
-    let mediaIds = []
-    if (media) {
-      const arrayBuffer = await media.arrayBuffer();
-      mediaBuffer = Buffer.from(arrayBuffer);
-
-      console.log("About to call upload media")
-      mediaIds.push(await twitterClient.v1.uploadMedia(mediaBuffer, { mimeType: 'image/png', target: 'tweet' }))
+        const twitterClient = new TwitterApi({
+          appKey: process.env.TWITTER_OAUTH_1_KEY,
+          appSecret: process.env.TWITTER_OAUTH_1_SECRET,
+          accessToken: twitterToken.token,
+          accessSecret: twitterToken.secret,
+        });
+    
+        console.log("Twitter user", await twitterClient.v2.me())
+    
+        let mediaBuffer;
+        let mediaIds = []
+        if (media) {
+          const arrayBuffer = await media.arrayBuffer();
+          mediaBuffer = Buffer.from(arrayBuffer);
+    
+          console.log("About to call upload media")
+          mediaIds.push(await twitterClient.v1.uploadMedia(mediaBuffer, { mimeType: 'image/png', target: 'tweet' }))
+        }
+    
+        console.log("Media IDs", mediaIds)
+    
+        result = await twitterClient.v2.tweet({
+          text: text,
+          media: { media_ids: mediaIds }  
+        });
+        break;
+      case "linkedin":
+        break;
+      default:
+        return NextResponse.json({ error: 'Invalid platform' }, { status: 400 });
     }
-
-    console.log("Media IDs", mediaIds)
-
-    let result = await twitterClient.v2.tweet({
-      text: text,
-      media: { media_ids: mediaIds }  
-    });
-
-    // console.log("Tweet result", result);
 
     return NextResponse.json(result)
   } catch (error) {

@@ -97,6 +97,7 @@ export default function Home() {
     try {
       const formData = new FormData();
       formData.append('text', draft);
+      formData.append('platform', platform);
       if (file) {
         formData.append('media', file);
       }
