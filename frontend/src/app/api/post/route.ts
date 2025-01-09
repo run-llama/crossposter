@@ -29,7 +29,15 @@ export async function POST(req: Request, res: Response) {
 
     console.log("Attached Media", media)
 
-    const twitterClient = new TwitterApi(user.twitter_token);
+    const twitterToken = JSON.parse(user.twitter_token)
+
+    //const twitterClient = new TwitterApi(user.twitter_token);
+    const twitterClient = new TwitterApi({
+      appKey: process.env.TWITTER_OAUTH_1_KEY,
+      appSecret: process.env.TWITTER_OAUTH_1_SECRET,
+      accessToken: twitterToken.token,
+      accessSecret: twitterToken.secret,
+    });
 
     console.log("Twitter user", await twitterClient.v2.me())
 
@@ -39,7 +47,8 @@ export async function POST(req: Request, res: Response) {
       const arrayBuffer = await media.arrayBuffer();
       mediaBuffer = Buffer.from(arrayBuffer);
 
-      mediaIds = await twitterClient.v1.uploadMedia(mediaBuffer, { mimeType: 'image/png' })
+      console.log("About to call upload media")
+      mediaIds.push(await twitterClient.v1.uploadMedia(mediaBuffer, { mimeType: 'image/png', target: 'tweet' }))
     }
 
     console.log("Media IDs", mediaIds)

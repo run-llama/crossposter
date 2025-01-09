@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const provider = searchParams.get("provider");
   const token = searchParams.get("token");
+  const secret = searchParams.get("secret");
 
   // Validate required parameters
   if (!provider || !token) {
@@ -43,10 +44,17 @@ export async function GET(request: NextRequest) {
     // Update the appropriate token field based on provider
     const tokenField = `${provider}_token` as 'twitter_token' | 'linkedin_token' | 'bluesky_token' | 'mastodon_token';
     
-    await prisma.users.update({
-      where: { email: session.user.email },
-      data: { [tokenField]: token }
-    });
+    if (provider === 'twitter') {
+      await prisma.users.update({
+        where: { email: session.user.email },
+        data: { [tokenField]: JSON.stringify({ token, secret }) }
+      });
+    } else {
+      await prisma.users.update({
+        where: { email: session.user.email },
+        data: { [tokenField]: token }
+      });
+    }
 
     return NextResponse.redirect(new URL('/', request.url));
   } catch (error) {

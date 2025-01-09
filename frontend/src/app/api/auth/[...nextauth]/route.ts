@@ -11,14 +11,16 @@ export const authOptions: NextAuthOptions = {
             clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
         }),
         TwitterProvider({
-            clientId: process.env.TWITTER_CLIENT_ID!,
-            clientSecret: process.env.TWITTER_CLIENT_SECRET!,
-            version: "2.0", // Use OAuth 2.0
-            authorization: {
-                params: {
-                    scope: "tweet.read tweet.write users.read offline.access"
-                }
-            }
+            clientId: process.env.TWITTER_OAUTH_1_KEY!,
+            clientSecret: process.env.TWITTER_OAUTH_1_SECRET!,
+            // clientId: process.env.TWITTER_CLIENT_ID!,
+            // clientSecret: process.env.TWITTER_CLIENT_SECRET!,
+            // version: "2.0",
+            // authorization: {
+            //     params: {
+            //         scope: "tweet.read tweet.write users.read offline.access"
+            //     }
+            // }
         }),
         LinkedInProvider({
             clientId: process.env.LINKEDIN_CLIENT_ID!,
@@ -39,23 +41,31 @@ export const authOptions: NextAuthOptions = {
     ],
     callbacks: {
         async signIn({ user, account }) {
-            if (account?.provider !== 'google' && account?.access_token) {
-                console.log("account", account);
+            if (account && account.provider !== 'google') {
+                let token = account.access_token
+                let secret = null
+                if (account.provider === 'twitter') {
+                    token = account.oauth_token
+                    secret = account.oauth_token_secret
+                }
 
                 // This value will be available in the client's signIn() callback
-                return `/api/user/save-token?provider=${account.provider}&token=${account.access_token}`
+                return `/api/user/save-token?provider=${account.provider}&token=${token}&secret=${secret}`
             }
             return true
         },
         async session({ session, token }) {
             // Add token to session so it's available via getSession
-            session.accessToken = token.accessToken
+            if (session.user?.email) {
+                session.accessToken = token.accessToken
+            }
             return session
         },
         async jwt({ token, account }) {
             // Persist the access token to the token right after signin
-            if (account) {
+            if (account?.provider === 'google') {
                 token.accessToken = account.access_token
+                token.provider = account.provider
             }
             return token
         }
