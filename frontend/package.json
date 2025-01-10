@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.2.1",
+    "linkedin-post-share": "github:seldo/linkedin-post-share",
     "next": "15.1.1",
     "next-auth": "^4.24.11",
     "react": "^19.0.0",

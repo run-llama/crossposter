@@ -10,8 +10,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  console.log("session", session);
-
   // Get query parameters
   const searchParams = request.nextUrl.searchParams;
   const provider = searchParams.get("provider");
