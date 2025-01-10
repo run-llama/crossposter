@@ -92,7 +92,7 @@ export async function POST(req: Request, res: Response) {
 
     return NextResponse.json(result)
   } catch (error) {
-    console.log("Error posting tweet", error)
+    console.log(`Error posting to socials`, error)
     return NextResponse.json({ message: 'Error posting', error: error }, { status: 500 })
   }
 }

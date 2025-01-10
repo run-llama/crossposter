@@ -31,21 +31,30 @@ export default class LinkedinPostShare {
         }
     }
 
-    async getOrganizationURN(vanityName: string) {
+    async getOrganizationData(vanityName: string) {
         const response = await fetch(
-          `https://api.linkedin.com/v2/organizations?q=vanityName&vanityName=${vanityName}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${this.accessToken}`
+            `https://api.linkedin.com/v2/organizations?q=vanityName&vanityName=${vanityName}`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${this.accessToken}`
+                }
             }
-          }
         );
         const result = await response.json();
         console.log(`Organization result for ${vanityName}`, result)
-        const urn = `urn:li:organization:${result.elements[0].id}`
+        return result.elements[0]
+    }
+
+    async getOrganizationURNFromData(organizationData: any) {
+        const urn = `urn:li:organization:${organizationData.id}`
         console.log("Organization URN", urn)
         return urn;
-      }    
+    }
+
+    async getOrganizationURN(vanityName: string) {
+        const result = await this.getOrganizationData(vanityName);
+        return await this.getOrganizationURNFromData(result)
+    }
 
     async getPersonURN(): Promise<string | null> {
         const profile = await this.getProfileData();
@@ -123,6 +132,29 @@ export default class LinkedinPostShare {
     }
 
     async createPostWithImage(post: string, image: Buffer, imageAlt?: string, organizationURN: string | null = null): Promise<boolean | undefined> {
+
+        post = this.removeLinkedinReservedCharacters(post);
+
+        // Extract company names from LinkedIn URLs
+        const companyUrlRegex = /https:\/\/www\.linkedin\.com\/company\/([^\/\s']+)/g;
+        const matches = [...post.matchAll(companyUrlRegex)];
+        
+        // Fetch organization data for each company
+        let allCompanyData = []
+        for (const match of matches) {
+            let companySlug = match[1]
+            let companyData = await this.getOrganizationData(companySlug)
+            allCompanyData.push(companyData)
+            const companyUrl = `https://www.linkedin.com/company/${companySlug}`;
+            const companyName = companyData.localizedName
+            const companyUrn = await this.getOrganizationURNFromData(companyData)
+            const companyUrlRegex = new RegExp(companyUrl, 'g');
+            // replace the company URL with the company name
+            post = post.replace(companyUrlRegex, `@[${companyName}](${companyUrn})`);
+        }
+
+        console.log("Post with company names", post)
+
         let authorURN;
         if (!organizationURN) {
             authorURN = await this.getPersonURN();
@@ -147,12 +179,11 @@ export default class LinkedinPostShare {
         }
 
         const imageId = imageUploadRequest.value.image;
-        const reservedCharactersRemovedPost = this.removeLinkedinReservedCharacters(post);
 
         try {
             const postData = {
                 author: authorURN,
-                commentary: reservedCharactersRemovedPost,
+                commentary: post,
                 visibility: 'PUBLIC',
                 distribution: {
                     feedDistribution: 'MAIN_FEED',
@@ -163,11 +194,13 @@ export default class LinkedinPostShare {
                     media: {
                         title: imageAlt ?? 'Cover image of the post',
                         id: imageId,
-                    },
+                    }
                 },
                 lifecycleState: 'PUBLISHED',
                 isReshareDisabledByAuthor: false,
             };
+
+            console.log("Post data", postData)
 
             const data = await axios(`${this.LINKEDIN_BASE_URL}/rest/posts`, {
                 method: 'POST',
