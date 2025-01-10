@@ -31,6 +31,22 @@ export default class LinkedinPostShare {
         }
     }
 
+    async getOrganizationURN(vanityName: string) {
+        const response = await fetch(
+          `https://api.linkedin.com/v2/organizations?q=vanityName&vanityName=${vanityName}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${this.accessToken}`
+            }
+          }
+        );
+        const result = await response.json();
+        console.log(`Organization result for ${vanityName}`, result)
+        const urn = `urn:li:organization:${result.elements[0].id}`
+        console.log("Organization URN", urn)
+        return urn;
+      }    
+
     async getPersonURN(): Promise<string | null> {
         const profile = await this.getProfileData();
         if (!profile || !profile.sub) {
@@ -97,14 +113,28 @@ export default class LinkedinPostShare {
         return text.replace(/[|{}@\[\]()<>\\*_~+]/gm, '');
     }
 
-    async createPostWithImage(post: string, image: Buffer, imageAlt?: string): Promise<boolean | undefined> {
-        const personUrn = await this.getPersonURN();
-        if (!personUrn) {
-            console.error('Cannot get person URN');
+    async createPostWithImageForOrganization(post: string, image: Buffer, imageAlt?: string, organizationName: string): Promise<boolean | undefined> {
+        const organizationUrn = await this.getOrganizationURN(organizationName);
+        if (!organizationUrn) {
+            console.error('Cannot get organization URN');
             return;
         }
+        return this.createPostWithImage(post, image, imageAlt, organizationUrn);
+    }
 
-        const imageUploadRequest = await this.createImageUploadRequest(personUrn);
+    async createPostWithImage(post: string, image: Buffer, imageAlt?: string, organizationURN: string | null = null): Promise<boolean | undefined> {
+        let authorURN;
+        if (!organizationURN) {
+            authorURN = await this.getPersonURN();
+            if (!authorURN) {
+                console.error('Cannot get person URN');
+            }
+            return;
+        } else {
+            authorURN = organizationURN;
+        }
+
+        const imageUploadRequest = await this.createImageUploadRequest(authorURN);
         if (!imageUploadRequest) {
             console.error('Cannot create image upload request');
             return;
@@ -121,7 +151,7 @@ export default class LinkedinPostShare {
 
         try {
             const postData = {
-                author: personUrn,
+                author: authorURN,
                 commentary: reservedCharactersRemovedPost,
                 visibility: 'PUBLIC',
                 distribution: {

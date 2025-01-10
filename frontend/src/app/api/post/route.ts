@@ -66,8 +66,8 @@ export async function POST(req: Request, res: Response) {
 
         const linkedInToken = user.linkedin_token
         
-        const post = "This is my post content";
-        const imageAlt = "Alternative text for the image";
+        const post = text;
+        const imageAlt = null;
 
         let linkedInMediaBuffer;
         if (media) {
@@ -76,7 +76,8 @@ export async function POST(req: Request, res: Response) {
         }        
         
         const linkedinPostShare = new LinkedinPostShare(linkedInToken);
-        result = await linkedinPostShare.createPostWithImage(post, linkedInMediaBuffer, imageAlt);
+        //result = await linkedinPostShare.createPostWithImage(post, linkedInMediaBuffer, imageAlt);
+        result = await linkedinPostShare.createPostWithImageForOrganization(post, linkedInMediaBuffer, imageAlt, user.linkedin_company);
         
         if (result) {
           console.log("Post shared successfully!");

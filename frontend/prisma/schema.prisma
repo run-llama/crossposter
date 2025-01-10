@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
   engineType = "library"
 }
 
@@ -9,9 +9,10 @@ datasource db {
 }
 
 model users {
-  email          String  @unique(map: "users_email_idx") @db.VarChar
-  twitter_token  String? @db.VarChar
-  linkedin_token String? @db.VarChar
-  bluesky_token  String? @db.VarChar
-  mastodon_token String? @db.VarChar
+  email            String  @unique(map: "users_email_idx") @db.VarChar
+  twitter_token    String? @db.VarChar
+  linkedin_token   String? @db.VarChar
+  bluesky_token    String? @db.VarChar
+  mastodon_token   String? @db.VarChar
+  linkedin_company String? @db.VarChar
 }
