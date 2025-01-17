@@ -10,6 +10,7 @@ export default function Home() {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [file, setFile] = useState<File | null>(null);
   const [user, setUser] = useState(null);
+  const [isBlueskyModalOpen, setIsBlueskyModalOpen] = useState(false);
 
   useEffect(() => {
     if (session) {
@@ -118,7 +119,7 @@ export default function Home() {
   return (
     <>
       <h1>Cross-Poster</h1>
-      <AuthButtons user={user} />
+      <AuthButtons user={user} isBlueskyModalOpen={isBlueskyModalOpen} setIsBlueskyModalOpen={setIsBlueskyModalOpen} />
       <div className="createDraftsBox">
         <div className="container">
           <div className="enterText">

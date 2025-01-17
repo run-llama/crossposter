@@ -47,6 +47,11 @@ export async function GET(request: NextRequest) {
         where: { email: session.user.email },
         data: { [tokenField]: JSON.stringify({ token, secret }) }
       });
+    } else if (provider === 'bluesky') {
+      await prisma.users.update({
+        where: { email: session.user.email },
+        data: { [tokenField]: JSON.stringify({ identifier: token, password: secret }) }
+      });
     } else {
       await prisma.users.update({
         where: { email: session.user.email },

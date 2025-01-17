@@ -1,25 +1,40 @@
 import { signIn } from 'next-auth/react'
+import { BlueskyConnectModal } from './BlueskyConnectModal'
 
-export function AuthButtons({user}: {user: any}) {
+export function AuthButtons({user, isBlueskyModalOpen, setIsBlueskyModalOpen}: {user: any, isBlueskyModalOpen: boolean, setIsBlueskyModalOpen: (open: boolean) => void}) {
 
-  const providerNames = ['twitter', 'linkedin', 'bluesky', 'mastodon'];
+  const providerNames = {
+    'twitter': "Twitter",
+    'linkedin': "LinkedIn",
+  };
 
   console.log("authbutton user", user);
 
   return (
     <div className="space-y-4">
-      {providerNames.map((provider) => {
+      {Object.keys(providerNames).map((provider) => {
         const tokenField = `${provider}_token` as keyof typeof user;
         return user && user[tokenField] ? (
           <div key={provider}>
-            {provider} connected
+            {providerNames[provider]} connected
           </div>
         ) : (
           <button key={provider} onClick={() => signIn(provider)}>
             Connect {provider}
           </button>
         );
-      })}
+      })}      
+      {user && user['bluesky_token'] ? (
+        <div key="bluesky">
+          Bluesky connected
+        </div>
+      ) : (
+        <button key="bluesky" onClick={() => setIsBlueskyModalOpen(true)}>Connect Bluesky</button>
+      )}
+      <BlueskyConnectModal 
+        isOpen={isBlueskyModalOpen}
+        onClose={() => setIsBlueskyModalOpen(false)}
+      />
     </div>
   )
 }

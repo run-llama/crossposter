@@ -37,7 +37,7 @@ export const authOptions: NextAuthOptions = {
                     email: profile.email
                 }
             },
-        }),
+        })
     ],
     callbacks: {
         async signIn({ user, account }) {
