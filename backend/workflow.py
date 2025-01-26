@@ -94,8 +94,8 @@ class CrossPosterWorkflow(Workflow):
 
         ctx.send_event(GenerateTwitterHandlesEvent(entities=extracted_entities["entities"]))
         ctx.send_event(GenerateLinkedinHandlesEvent(entities=extracted_entities["entities"]))
+        ctx.send_event(GenerateBlueskyHandlesEvent(entities=extracted_entities["entities"]))
         #ctx.send_event(GenerateMastodonMentionsEvent(entities=extracted_entities["entities"]))
-        #ctx.send_event(GenerateBlueskyMentionsEvent(entities=extracted_entities["entities"]))
 
     async def _search_web(self, prompt):
         agent = FunctionCallingAgent.from_tools(
@@ -122,11 +122,20 @@ class CrossPosterWorkflow(Workflow):
                 These days Twitter is also called X, so it might be "X account" or "Twitter account".
                 Search the web for "{entity_value} twitter account". You'll get a list of results.
                 Pick the one that is most likely to be the Twitter/X account of the given entity.
-                Return the URL of that twitter account. Return the URL ONLY.
+                Return the URL of that twitter account. Return the URL ONLY. If none of the results
+                seem to be the Twitter/X account of the given entity, return "NOT FOUND" only.
             """)
 
             # parse the URL into what the poster will use, in twitter's case a simple string like "@username"
-            handle = "@" + result.split("https://twitter.com/")[1]
+            print("Twitter result: ", result)
+            if result == "NOT FOUND":
+                twitter_handles[entity_key] = None
+                continue
+            
+            if "twitter.com/" in result:
+                handle = "@" + result.split("https://twitter.com/")[1].split("?")[0]
+            elif "x.com/" in result:
+                handle = "@" + result.split("https://x.com/")[1].split("?")[0]
             twitter_handles[entity_key] = handle
             
         return CollectHandlesEvent(platform="twitter", handles=twitter_handles)
@@ -142,30 +151,55 @@ class CrossPosterWorkflow(Workflow):
                 Your goal is to find the LinkedIn account of the given entity.
                 Search the web for "{entity_value} linkedin account". You'll get a list of results.
                 Pick the one that is most likely to be the LinkedIn account of the given entity.
-                Return the URL of that LinkedIn account. Return the URL ONLY.
+                Return the URL of that LinkedIn account. Return the URL ONLY. If none of the results
+                seem to be the LinkedIn account of the given entity, return "NOT FOUND" only.
             """)
 
-            # parse the URL into what the poster will use, in linkedin's case a string like "linkedin.com/in/username"
             print("LinkedIn result: ", result)
-            #handle = "linkedin.com/in/" + result.split("https://www.linkedin.com/in/")[1]
+
+            if result == "NOT FOUND":
+                linkedin_handles[entity_key] = None
+                continue
 
             linkedin_handles[entity_key] = result
 
         return CollectHandlesEvent(platform="linkedin", handles=linkedin_handles)
 
     @step
-    async def generate_mastodon_handles(self, ctx: Context, ev: GenerateMastodonHandlesEvent) -> CollectHandlesEvent:
-        ctx.write_event_to_stream(ProgressEvent(msg=f"Generating Mastodon handles..."))
-
-    @step
     async def generate_bluesky_handles(self, ctx: Context, ev: GenerateBlueskyHandlesEvent) -> CollectHandlesEvent:
         ctx.write_event_to_stream(ProgressEvent(msg=f"Generating Bluesky handles..."))
+
+        bluesky_handles = {}
+        for entity_key, entity_value in ev.entities.items():
+            ctx.write_event_to_stream(ProgressEvent(msg=f"Looking up BlueSky handle for {entity_value}..."))
+            result = await self._search_web(f"""
+                Your goal is to find the BlueSky account of the given entity. 
+                Search the web for "{entity_value} bluesky". You'll get a list of results.
+                Pick the one that is most likely to be the Bluesky account of the given entity.
+                Return the URL of that bluesky account. Return the URL ONLY. If none of the results
+                seem to be the Bluesky/X account of the given entity, return "NOT FOUND" only.
+            """)
+
+            # parse the URL into what the poster will use, in twitter's case a simple string like "@username"
+            print("BlueSky result: ", result)
+            if result == "NOT FOUND":
+                bluesky_handles[entity_key] = None
+                continue
+            
+            handle = "@" + result.split("https://bsky.app/profile/")[1].split("?")[0]
+            bluesky_handles[entity_key] = handle
+            
+        return CollectHandlesEvent(platform="bluesky", handles=bluesky_handles)
+
+    @step
+    async def generate_mastodon_handles(self, ctx: Context, ev: GenerateMastodonHandlesEvent) -> CollectHandlesEvent:
+        ctx.write_event_to_stream(ProgressEvent(msg=f"Generating Mastodon handles..."))
 
     @step
     async def collect_handles(self, ctx: Context, ev: CollectHandlesEvent) -> StopEvent:
         ctx.write_event_to_stream(ProgressEvent(msg="Collecting generated handles..."))
 
-        results = ctx.collect_events(ev, [CollectHandlesEvent] * 2)
+        results = ctx.collect_events(ev, [CollectHandlesEvent] * 3)
         if results is None:
             return None
 
@@ -182,7 +216,8 @@ class CrossPosterWorkflow(Workflow):
             draft = await ctx.get("entity_placeholder_draft")
             print(f"Draft before: {draft}")
             for entity_key, entity_value in handles.items():
-                draft = draft.replace(f"@[{entity_key}]", entity_value)
+                if entity_value is not None:
+                    draft = draft.replace(f"@[{entity_key}]", entity_value)
 
             drafts[platform] = draft
             print(f"Draft for {platform}: {draft}")

@@ -76,7 +76,6 @@ export async function POST(req: Request, res: Response) {
         }        
         
         const linkedinPostShare = new LinkedinPostShare(linkedInToken);
-        //result = await linkedinPostShare.createPostWithImage(post, linkedInMediaBuffer, imageAlt);
         result = await linkedinPostShare.createPostWithImageForOrganization(post, linkedInMediaBuffer, imageAlt, user.linkedin_company);
         
         if (result) {
@@ -85,6 +84,8 @@ export async function POST(req: Request, res: Response) {
           console.log("Failed to share post.");
         }
 
+        break;
+      case "bluesky":
         break;
       default:
         return NextResponse.json({ error: 'Invalid platform' }, { status: 400 });

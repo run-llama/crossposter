@@ -56,29 +56,33 @@ export default function Home() {
       }));
 
       // Handle incoming events
+      const eventsList = document.getElementById('draftingEventsList');
+      if (!eventsList) {
+        console.error("Events list not found");
+        return;
+      }
+      eventsList.innerHTML = "";
+    
       eventSource.onmessage = (event) => {
-        const eventsList = document.getElementById('draftingEventsList');
-        if (eventsList) {
-          const li = document.createElement('li');
-          const data = JSON.parse(event.data);
-          li.textContent = data.msg;
-          
-          // Add new item
-          eventsList.appendChild(li);
-          
-          // Keep only last 4 items
-          while (eventsList.children.length > 4) {
-            const firstChild = eventsList.firstChild;
-            if (firstChild) {
-              eventsList.removeChild(firstChild);
-            }
+        const li = document.createElement('li');
+        const data = JSON.parse(event.data);
+        li.textContent = data.msg;
+        
+        // Add new item
+        eventsList.appendChild(li);
+        
+        // Keep only last 4 items
+        while (eventsList.children.length > 4) {
+          const firstChild = eventsList.firstChild;
+          if (firstChild) {
+            eventsList.removeChild(firstChild);
           }
+        }
 
-          // Check if workflow is complete
-          if (data.msg === 'Workflow completed') {
-            eventSource.close();
-            setDrafts(data.result);
-          }
+        // Check if workflow is complete
+        if (data.msg === 'Workflow completed') {
+          eventSource.close();
+          setDrafts(data.result);
         }
       };
 

@@ -11,10 +11,12 @@
   "dependencies": {
     "@prisma/client": "^6.2.1",
     "linkedin-post-share": "github:seldo/linkedin-post-share",
+    "llamaindex": "^0.8.31",
     "next": "15.1.1",
     "next-auth": "^4.24.11",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "serpapi": "^2.1.0",
     "twitter-api-v2": "^1.19.0"
   },
   "devDependencies": {
