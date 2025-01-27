@@ -9,7 +9,6 @@ import providerNames from '@/util/platformNames'
 export default function Home() {
   const { data: session, status } = useSession();
   const [draftText, setDraftText] = useState('');
-  const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [file, setFile] = useState<File | null>(null);
   const [user, setUser] = useState(null);
   const [isBlueskyModalOpen, setIsBlueskyModalOpen] = useState(false);
@@ -85,7 +84,6 @@ export default function Home() {
         // Check if workflow is complete
         if (data.msg === 'Workflow completed') {
           eventSource.close();
-          setDrafts(data.result);
           setEditableDrafts(data.result);
         }
       };
@@ -180,7 +178,7 @@ export default function Home() {
           <ul id="draftingEventsList"></ul>
         </div>
         <div id="drafts">
-          {Object.entries(drafts).map(([platform, draft]) => (
+          {Object.entries(editableDrafts).map(([platform, draft]) => (
             <div key={platform} className="draft">
               <h3>{providerNames[platform]}</h3>
               <form onSubmit={async (e) => {
