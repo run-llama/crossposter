@@ -13,6 +13,7 @@ export default function Home() {
   const [user, setUser] = useState(null);
   const [isBlueskyModalOpen, setIsBlueskyModalOpen] = useState(false);
   const [editableDrafts, setEditableDrafts] = useState<Record<string, string>>({});
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   useEffect(() => {
     if (session) {
@@ -44,11 +45,23 @@ export default function Home() {
   }
 
   const handleSubmit = async () => {
+    if (!draftText) {
+      setErrorMessage('Please enter text so we can create drafts.');
+      const dialog = document.querySelector('dialog');
+      dialog?.showModal();
+      return;
+    }
+
+    if (!file) {
+      setErrorMessage('Please upload an image before creating drafts.');
+      const dialog = document.querySelector('dialog');
+      dialog?.showModal();
+      return;
+    }
+
     const formData = new FormData();
     formData.append('text', draftText);
-    if (file) {
-      formData.append('file', file);
-    }
+    formData.append('file', file);
 
     try {
       // Create EventSource connection
@@ -125,6 +138,18 @@ export default function Home() {
   return (
     <>
       <h1>Cross-Poster</h1>
+      <dialog onClick={(e) => {
+        const dialog = document.querySelector('dialog');
+        dialog?.close();
+      }}>
+        <div className="dialog-content">
+          <p>{errorMessage}</p>
+          <button onClick={(e) => {
+            const dialog = document.querySelector('dialog');
+            dialog?.close();
+          }}>Close</button>
+        </div>
+      </dialog>
       <AuthButtons user={user} isBlueskyModalOpen={isBlueskyModalOpen} setIsBlueskyModalOpen={setIsBlueskyModalOpen} />
       <div className="createDraftsBox">
         <div className="container">
@@ -153,14 +178,23 @@ export default function Home() {
                 e.preventDefault();
                 e.currentTarget.classList.remove('dragover');
                 const newFile = e.dataTransfer.files[0];
-                setFile(newFile);
-                const filesList = document.getElementById('droppedFilesList');
-                if (filesList) {
-                  filesList.innerHTML = `${newFile.name}`;
+                if (newFile.type.startsWith('image/')) {
+                  setFile(newFile);
+                  const reader = new FileReader();
+                  reader.onload = (e) => {
+                    const dropZone = document.getElementById('media');
+                    if (dropZone) {
+                      dropZone.style.backgroundImage = `url(${e.target?.result})`;
+                      dropZone.style.backgroundSize = 'contain';
+                      dropZone.style.backgroundPosition = 'center';
+                      dropZone.style.backgroundRepeat = 'no-repeat';
+                    }
+                  };
+                  reader.readAsDataURL(newFile);
                 }
               }}
             >
-              Drop file here
+              {!file && 'Drop file here'}
             </div>
             <div className="droppedFiles">
               <div id="droppedFilesList"></div>
