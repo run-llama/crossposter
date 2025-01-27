@@ -13,6 +13,7 @@ export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [user, setUser] = useState(null);
   const [isBlueskyModalOpen, setIsBlueskyModalOpen] = useState(false);
+  const [editableDrafts, setEditableDrafts] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (session) {
@@ -85,6 +86,7 @@ export default function Home() {
         if (data.msg === 'Workflow completed') {
           eventSource.close();
           setDrafts(data.result);
+          setEditableDrafts(data.result);
         }
       };
 
@@ -183,13 +185,16 @@ export default function Home() {
               <h3>{providerNames[platform]}</h3>
               <form onSubmit={async (e) => {
                 e.preventDefault();
-                await handlePost(platform, draft);
+                await handlePost(platform, editableDrafts[platform]);
               }}>
                 <div className="draftText">
                   <textarea 
                     name="text"
-                    value={draft}
-                    readOnly
+                    value={editableDrafts[platform] || ''}
+                    onChange={(e) => setEditableDrafts(prev => ({
+                      ...prev,
+                      [platform]: e.target.value
+                    }))}
                   />
                   <button type="submit">Post to {providerNames[platform]}</button>
                 </div>
