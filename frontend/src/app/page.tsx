@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import { AuthButtons } from '@/components/AuthButtons'
 import { SignOutButton } from '@/components/SignOutButton'
+import providerNames from '@/util/platformNames'
+
 export default function Home() {
   const { data: session, status } = useSession();
   const [draftText, setDraftText] = useState('');
@@ -178,7 +180,7 @@ export default function Home() {
         <div id="drafts">
           {Object.entries(drafts).map(([platform, draft]) => (
             <div key={platform} className="draft">
-              <h3>{platform}</h3>
+              <h3>{providerNames[platform]}</h3>
               <form onSubmit={async (e) => {
                 e.preventDefault();
                 await handlePost(platform, draft);
@@ -189,7 +191,7 @@ export default function Home() {
                     value={draft}
                     readOnly
                   />
-                  <button type="submit">Post to {platform}</button>
+                  <button type="submit">Post to {providerNames[platform]}</button>
                 </div>
               </form>
             </div>

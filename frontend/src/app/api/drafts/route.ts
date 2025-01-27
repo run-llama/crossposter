@@ -79,6 +79,8 @@ const getTwitterHandles = async (controller: ReadableStreamDefaultController, ex
             }
         }
 
+        sendResponse(controller, "Found Twitter handle: " + handle);
+
         return [entityValue, handle];
     });
 
@@ -123,6 +125,9 @@ const getLinkedInHandles = async (controller: ReadableStreamDefaultController, e
         if (result !== "NOT FOUND") {
             handle = result;
         }
+
+        sendResponse(controller, "Found LinkedIn handle: " + handle);
+
         return [entityValue, handle];
     });
 
@@ -194,6 +199,9 @@ const getBlueskyHandles = async (controller: ReadableStreamDefaultController, ex
         if (result !== "NOT FOUND") {
             handle = result;
         }
+
+        sendResponse(controller, "Found Bluesky handle: " + handle);
+
         return [entityValue, handle];
     });
 
