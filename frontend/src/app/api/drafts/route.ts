@@ -209,7 +209,7 @@ const getBlueskyHandles = async (controller: ReadableStreamDefaultController, ex
     for (const [entityValue, url] of results) {
         if (url) {
             const handle = await translateBlueSkyURLToHandle(url)
-            blueskyHandles[entityValue as string] = `@[${handle}](${url})`
+            blueskyHandles[entityValue as string] = `@${handle}`
         } else {
             blueskyHandles[entityValue as string] = null
         }
@@ -312,6 +312,22 @@ export async function GET(request: Request) {
                         }
                     }
                     drafts[platform] = platformDraft
+                }
+
+                // bluesky needs to be rephrased if it's over 300 characters
+                if (drafts.bluesky.length > 300) {
+                    const response = await Settings.llm.complete({
+                        prompt: `
+                            This bluesky draft is too long. Rephrase it be at 300 characters or less.
+                            As much as possible, maintain @-mentions. The post likely ends with a URL, 
+                            that MUST be included.
+                            <draft>
+                            ${drafts.bluesky}
+                            </draft>
+                            Do NOT include any preamble or explanation, just return the rephrased text.
+                        `
+                    });
+                    drafts.bluesky = response.text
                 }
 
                 controller.enqueue(`data: ${JSON.stringify({

@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 import { TwitterApi } from 'twitter-api-v2';
 import { PrismaClient } from '@prisma/client';
 import LinkedinPostShare from '@/util/linkedinPostShare';
-
+import BlueSkyPoster from '@/util/blueSkyPoster';
 export async function POST(req: Request, res: Response) {
 
   const session = await getServerSession(authOptions)
@@ -86,6 +86,28 @@ export async function POST(req: Request, res: Response) {
 
         break;
       case "bluesky":
+
+        const blueSkyAuth = JSON.parse(user.bluesky_token)
+
+        const blueSkyPoster = new BlueSkyPoster(blueSkyAuth)
+        await blueSkyPoster.login()
+
+        let blueSkyMediaBuffer;
+        if (media) {
+          const arrayBuffer = await media.arrayBuffer();
+          blueSkyMediaBuffer = Buffer.from(arrayBuffer);
+        } else {
+          throw new Error("No media attached")
+        }       
+
+        result = await blueSkyPoster.post(text, blueSkyMediaBuffer)
+
+        if (result) {
+          console.log("Post shared successfully!");
+        } else {
+          console.log("Failed to share post.");
+        }
+
         break;
       default:
         return NextResponse.json({ error: 'Invalid platform' }, { status: 400 });

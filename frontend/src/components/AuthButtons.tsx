@@ -8,8 +8,6 @@ export function AuthButtons({user, isBlueskyModalOpen, setIsBlueskyModalOpen}: {
     'linkedin': "LinkedIn",
   };
 
-  console.log("authbutton user", user);
-
   return (
     <div className="space-y-4">
       {Object.keys(providerNames).map((provider) => {
