@@ -17,6 +17,7 @@
     "next-auth": "^4.24.11",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-icons": "^5.4.0",
     "serpapi": "^2.1.0",
     "twitter-api-v2": "^1.19.0"
   },

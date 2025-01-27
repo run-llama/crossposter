@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import { AuthButtons } from '@/components/AuthButtons'
-import { SignOutButton } from '@/components/SignOutButton'
 import providerNames from '@/util/platformNames'
 
 export default function Home() {
@@ -14,6 +13,9 @@ export default function Home() {
   const [isBlueskyModalOpen, setIsBlueskyModalOpen] = useState(false);
   const [editableDrafts, setEditableDrafts] = useState<Record<string, string>>({});
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
+  const [handles, setHandles] = useState<Record<string, string>>();
 
   useEffect(() => {
     if (session) {
@@ -34,8 +36,8 @@ export default function Home() {
   // If not authenticated, show login button
   if (!session) {
     return (
-      <div className="login-container">
-        <h1>Cross-Poster</h1>
+      <div id="main" className="login-container">
+        <h1>CrossPoster</h1>
         <p>Please sign in with your LlamaIndex account to continue</p>
         <button onClick={() => signIn('google')}>
           Sign in with Google
@@ -76,13 +78,24 @@ export default function Home() {
         console.error("Events list not found");
         return;
       }
-      eventsList.innerHTML = "";
+      eventsList.innerHTML = `<ul id="draftingEventsList"></ul>`;
     
       eventSource.onmessage = (event) => {
         const li = document.createElement('li');
         const data = JSON.parse(event.data);
         li.textContent = data.msg;
+
+        // Check if workflow is complete
+        if (data.msg === 'Workflow completed') {
+          eventSource.close();
+          setEditableDrafts(data.result);
+          console.log("Got handles", data.handles)
+          setHandles(data.handles);
+          return
+        }       
         
+        // otherwise keep the running list
+
         // Add new item
         eventsList.appendChild(li);
         
@@ -92,12 +105,6 @@ export default function Home() {
           if (firstChild) {
             eventsList.removeChild(firstChild);
           }
-        }
-
-        // Check if workflow is complete
-        if (data.msg === 'Workflow completed') {
-          eventSource.close();
-          setEditableDrafts(data.result);
         }
       };
 
@@ -136,8 +143,8 @@ export default function Home() {
   };
 
   return (
-    <>
-      <h1>Cross-Poster</h1>
+    <div id="main">
+      <h1>CrossPoster</h1>
       <dialog onClick={(e) => {
         const dialog = document.querySelector('dialog');
         dialog?.close();
@@ -150,7 +157,15 @@ export default function Home() {
           }}>Close</button>
         </div>
       </dialog>
-      <AuthButtons user={user} isBlueskyModalOpen={isBlueskyModalOpen} setIsBlueskyModalOpen={setIsBlueskyModalOpen} />
+      <AuthButtons 
+        user={user}
+        setUser={setUser}
+        isBlueskyModalOpen={isBlueskyModalOpen} 
+        setIsBlueskyModalOpen={setIsBlueskyModalOpen} 
+        dialogRef={dialogRef}
+        selectedPlatform={selectedPlatform}
+        setSelectedPlatform={setSelectedPlatform}
+      />
       <div className="createDraftsBox">
         <div className="container">
           <div className="enterText">
@@ -196,9 +211,6 @@ export default function Home() {
             >
               {!file && 'Drop file here'}
             </div>
-            <div className="droppedFiles">
-              <div id="droppedFilesList"></div>
-            </div>
           </div>
         </div>
         <div className="createDraftButton">
@@ -209,7 +221,25 @@ export default function Home() {
       </div>
       <div className="drafts">
         <div id="draftingEvents">
-          <ul id="draftingEventsList"></ul>
+          {handles ? (
+            <div id="foundHandles">
+              <h2>Entities were translated to these handles:</h2>
+              <div className="platforms">
+              {Object.keys(handles).map(
+                (platform) => (
+                  <div className="platform" key={platform}>
+                    <h3>{providerNames[platform]}</h3>
+                    {Object.keys(handles[platform]).map((handle) => (
+                      <div key={platform + "_" + handle}>{handle}: {handles[platform][handle]}</div>
+                    ))}
+                  </div>
+                )
+              )}
+              </div>
+            </div>
+          ) : (
+            <ul id="draftingEventsList"></ul>
+          )}
         </div>
         <div id="drafts">
           {Object.entries(editableDrafts).map(([platform, draft]) => (
@@ -235,9 +265,6 @@ export default function Home() {
           ))}
         </div>
       </div>
-      <div className="signOutButton">
-        <SignOutButton />
-      </div>
-    </>
+    </div>
   );
 }

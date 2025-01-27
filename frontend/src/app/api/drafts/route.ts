@@ -77,9 +77,8 @@ const getTwitterHandles = async (controller: ReadableStreamDefaultController, ex
             } else if (result.includes("x.com/")) {
                 handle = "@" + result.split("x.com/")[1].split("?")[0];
             }
+            sendResponse(controller, `Found Twitter handle for ${entityValue}: ` + handle);
         }
-
-        sendResponse(controller, "Found Twitter handle: " + handle);
 
         return [entityValue, handle];
     });
@@ -124,9 +123,8 @@ const getLinkedInHandles = async (controller: ReadableStreamDefaultController, e
         let handle = null;
         if (result !== "NOT FOUND") {
             handle = result;
+            sendResponse(controller, `Found LinkedIn handle for ${entityValue}: ` + handle);
         }
-
-        sendResponse(controller, "Found LinkedIn handle: " + handle);
 
         return [entityValue, handle];
     });
@@ -198,9 +196,8 @@ const getBlueskyHandles = async (controller: ReadableStreamDefaultController, ex
         let handle = null;
         if (result !== "NOT FOUND") {
             handle = result;
+            sendResponse(controller, `Found BlueSky handle for ${entityValue}: ` + handle);
         }
-
-        sendResponse(controller, "Found Bluesky handle: " + handle);
 
         return [entityValue, handle];
     });
@@ -296,7 +293,7 @@ export async function GET(request: Request) {
                         );
                     });
 
-                sendResponse(controller, `Got handles: ` + JSON.stringify(handles));
+                sendResponse(controller, `Got all handles`);
 
                 const drafts = {}
                 for (const platform in handles) {
@@ -332,7 +329,8 @@ export async function GET(request: Request) {
 
                 controller.enqueue(`data: ${JSON.stringify({
                     msg: "Workflow completed",
-                    result: drafts
+                    result: drafts,
+                    handles: handles
                 })}\n\n`);
 
                 controller.close();

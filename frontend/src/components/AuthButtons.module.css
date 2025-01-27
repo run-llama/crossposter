@@ -1,0 +1,68 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+}
+
+.iconRow {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 1.5rem;
+}
+
+.icon {
+  width: 24px;
+  height: 24px;
+}
+
+.connectedIcon {
+  color: #2563eb; /* blue-600 equivalent */
+}
+.disconnectedIcon {
+  color: #9CA3AF; /* gray-400 equivalent */
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 8px 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.disconnectedIcon:hover {
+  color: #4B5563; /* gray-600 equivalent */
+  background: #e5e7eb;
+  border-color: #d1d5db;
+} 
+
+.dialog {
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+.dialog::backdrop {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.dialogButtons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.dialogButtons button {
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.signOutButton {
+  margin-left: auto;
+} 
