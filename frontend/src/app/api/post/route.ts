@@ -76,7 +76,11 @@ export async function POST(req: Request, res: Response) {
         }        
         
         const linkedinPostShare = new LinkedinPostShare(linkedInToken);
-        result = await linkedinPostShare.createPostWithImageForOrganization(post, linkedInMediaBuffer, imageAlt, user.linkedin_company);
+        if (user.linkedin_company) {
+          result = await linkedinPostShare.createPostWithImageForOrganization(post, linkedInMediaBuffer, imageAlt, user.linkedin_company);
+        } else {
+          result = await linkedinPostShare.createPostWithImage(post, linkedInMediaBuffer, imageAlt);
+        }
         
         if (result) {
           console.log("Post shared successfully!");

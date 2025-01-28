@@ -19,7 +19,7 @@ export default class LinkedinPostShare {
                     'X-Restli-Protocol-Version': '2.0.0',
                 },
             });
-            console.log("Profile data", profileData)
+            console.log("Profile data", profileData.data)
             return profileData.data;
         } catch (e) {
             if (e instanceof AxiosError) {
@@ -194,8 +194,8 @@ export default class LinkedinPostShare {
             authorURN = await this.getPersonURN();
             if (!authorURN) {
                 console.error('Cannot get person URN');
+                return;
             }
-            return;
         } else {
             authorURN = organizationURN;
         }
