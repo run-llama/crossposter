@@ -31,6 +31,25 @@ export default class LinkedinPostShare {
         }
     }
 
+    /*
+    // TODO: need community management API to get this and we're never going to get that
+    async getPersonData(vanityName: string) {
+        console.log("About to get person data from vanity name ", vanityName)
+        const response = await fetch(
+            `https://api.linkedin.com/v2/people?q=vanityName&vanityName=${vanityName}`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${this.accessToken}`
+                }
+            }
+        );
+        const body = await response.text();
+        console.log("Person data from vanity name", body);
+        const result = await response.json();
+        return result.elements[0]
+    }
+    */
+
     async getOrganizationData(vanityName: string) {
         const response = await fetch(
             `https://api.linkedin.com/v2/organizations?q=vanityName&vanityName=${vanityName}`,
@@ -153,6 +172,21 @@ export default class LinkedinPostShare {
             post = post.replace(companyUrlRegex, `@[${companyName}](${companyUrn})`);
         }
 
+        /*
+        // Getting people from vanity names is not supported yet
+        // extract person names from linkedin URLs
+        const personUrlRegex = /https:\/\/www\.linkedin\.com\/in\/([^\/\s']+)/g;
+        const personMatches = [...post.matchAll(personUrlRegex)];
+
+        // Fetch person data for each person
+        let allPersonData = []
+        for (const match of personMatches) {
+            let personSlug = match[1]
+            let personData = await this.getPersonData(personSlug)
+            allPersonData.push(personData)
+        }
+        */
+
         console.log("Post with company names", post)
 
         let authorURN;
@@ -200,7 +234,7 @@ export default class LinkedinPostShare {
                 isReshareDisabledByAuthor: false,
             };
 
-            console.log("Post data", postData)
+            console.log("LinkedIn Post data", postData)
 
             const data = await axios(`${this.LINKEDIN_BASE_URL}/rest/posts`, {
                 method: 'POST',

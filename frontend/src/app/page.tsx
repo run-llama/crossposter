@@ -16,6 +16,7 @@ export default function Home() {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
   const [handles, setHandles] = useState<Record<string, string>>();
+  const [eventsList, setEventsList] = useState<string[]>([]);
 
   useEffect(() => {
     if (session) {
@@ -73,17 +74,11 @@ export default function Home() {
       }));
 
       // Handle incoming events
-      const eventsList = document.getElementById('draftingEventsList');
-      if (!eventsList) {
-        console.error("Events list not found");
-        return;
-      }
-      eventsList.innerHTML = `<ul id="draftingEventsList"></ul>`;
+      setHandles(null)
+      setEventsList(["Creating drafts..."]);
     
       eventSource.onmessage = (event) => {
-        const li = document.createElement('li');
         const data = JSON.parse(event.data);
-        li.textContent = data.msg;
 
         // Check if workflow is complete
         if (data.msg === 'Workflow completed') {
@@ -94,18 +89,9 @@ export default function Home() {
           return
         }       
         
-        // otherwise keep the running list
+        // otherwise keep the running list of no more than 4 items
+        setEventsList(prev => [...prev.slice(-3), data.msg].slice(-4));
 
-        // Add new item
-        eventsList.appendChild(li);
-        
-        // Keep only last 4 items
-        while (eventsList.children.length > 4) {
-          const firstChild = eventsList.firstChild;
-          if (firstChild) {
-            eventsList.removeChild(firstChild);
-          }
-        }
       };
 
       // Handle errors
@@ -238,7 +224,11 @@ export default function Home() {
               </div>
             </div>
           ) : (
-            <ul id="draftingEventsList"></ul>
+            <ul id="draftingEventsList">
+              {eventsList.map((event) => (
+                <li key={event}>{event}</li>
+              ))}
+            </ul>
           )}
         </div>
         <div id="drafts">

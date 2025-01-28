@@ -35,6 +35,10 @@ const sendResponse = (controller: ReadableStreamDefaultController, message: stri
     controller.enqueue(`data: ${JSON.stringify({msg: message})}\n\n`);
 }
 
+const forceUTF8 = (text: string) => {
+    return Buffer.from(text).toString('utf8');
+}
+
 Settings.llm = new Anthropic({
     model: "claude-3-5-sonnet-20240620",
     apiKey: process.env.ANTHROPIC_API_KEY,
@@ -47,22 +51,22 @@ const getTwitterHandles = async (controller: ReadableStreamDefaultController, ex
     const searchPromises = Object.values(extractedEntities).map(async (entityValue: string) => {
         sendResponse(controller, "Looking up Twitter handle for " + entityValue);
 
-        const agentResponse = await agent.chat({
+        let agentResponse = await agent.chat({
             message: `
                 Your goal is to find the Twitter account of the given entity. 
                 These days Twitter is also called X, so it might be "X account" or "Twitter account". Search the web for "${entityValue} twitter account". You'll get a list of results.
                 Pick the one that is most likely to be the Twitter/X account of the given entity.
                 Return the FULL URL ONLY. If none of the results seem to be the Twitter/X account of the given entity, return "NOT FOUND" only.
             `
-        });
+            });
 
         console.log("Twitter Agent response: ", agentResponse.message.content[0].text);
 
-        const response = await Settings.llm.complete({
+        let response = await Settings.llm.complete({
             prompt: `
                 You're given the output of an agent running a search. It has either found a URL or not. If it found a URL, return that URL ONLY. If it didn't find a URL, return "NOT FOUND" only.
                 <agentresponse>
-                ${Buffer.from(agentResponse.message.content[0].text).toString('utf8')}
+                ${forceUTF8(agentResponse.message.content[0].text)}
                 </agentresponse>
             `
         });
@@ -112,7 +116,7 @@ const getLinkedInHandles = async (controller: ReadableStreamDefaultController, e
             prompt: `
                 You're given the output of an agent running a search. It has either found a URL or not. If it found a URL, return that URL ONLY. If it didn't find a URL, return "NOT FOUND" only.
                 <agentresponse>
-                ${agentResponse.message.content[0].text}
+                ${forceUTF8(agentResponse.message.content[0].text)}
                 </agentresponse>
             `
         });
@@ -124,6 +128,12 @@ const getLinkedInHandles = async (controller: ReadableStreamDefaultController, e
         if (result !== "NOT FOUND") {
             handle = result;
             sendResponse(controller, `Found LinkedIn handle for ${entityValue}: ` + handle);
+        }
+
+        // FIXME: if the entity is a person, we won't be able to @-mention them
+        // (see linkedInPostShare.ts) so we return null.
+        if (handle.includes("linkedin.com/in/")) {
+            handle = null;
         }
 
         return [entityValue, handle];
@@ -185,7 +195,7 @@ const getBlueskyHandles = async (controller: ReadableStreamDefaultController, ex
             prompt: `
                 You're given the output of an agent running a search. It has either found a URL or not. If it found a URL, return that URL ONLY. If it didn't find a URL, return "NOT FOUND" only.
                 <agentresponse>
-                ${agentResponse.message.content[0].text}
+                ${forceUTF8(agentResponse.message.content[0].text)}
                 </agentresponse>
             `
         });
