@@ -112,11 +112,23 @@ export async function POST(req: Request, res: Response) {
           console.log("Failed to share post.");
         }
 
+        // add a URL for the post to the result
+        // the profile name is the identifier; it can be a barename or a domain
+        // if it's a barename, we need to add the domain
+        const profileName = blueSkyAuth.identifier
+        if (!profileName.includes('.')) {
+          profileName = `${profileName}.bsky.social`
+        }
+        // the post ID is the last part of the URI
+        const postId = result.uri.split('/').pop()
+        result.url = `https://bsky.app/profile/${profileName}/post/${postId}`
+
         break;
       default:
         return NextResponse.json({ error: 'Invalid platform' }, { status: 400 });
     }
 
+    console.log("Result", result)
     return NextResponse.json(result)
   } catch (error) {
     console.log(`Error posting to socials`, error)

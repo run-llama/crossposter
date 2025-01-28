@@ -19,7 +19,10 @@ export default function Home() {
   const [handles, setHandles] = useState<Record<string, string>>();
   const [eventsList, setEventsList] = useState<string[]>([]);
   const [linkedInOrganization, setLinkedInOrganization] = useState<string | null>(null);
-
+  const [twitterPostResult, setTwitterPostResult] = useState<string | null>(null);
+  const [linkedinPostResult, setLinkedinPostResult] = useState<string | null>(null);
+  const [blueskyPostResult, setBlueskyPostResult] = useState<string | null>(null);
+  
   useEffect(() => {
     if (session) {
       const fetchUser = async () => {
@@ -32,7 +35,6 @@ export default function Home() {
     }
   }, [session]);
 
-  // If loading, you might want to show a loading state
   if (status === "loading") {
     return <div>Loading...</div>
   }
@@ -125,8 +127,23 @@ export default function Home() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       console.log(`Successfully posted to ${platform}`);
+      switch(platform) {
+        case "twitter":
+          setTwitterPostResult(await response.json());
+          break;
+        case "linkedin":
+          setLinkedinPostResult(await response.json());
+          break;
+        case "bluesky":
+          setBlueskyPostResult(await response.json());
+          break;
+      }
+
     } catch (error) {
       console.error(`Error posting to ${platform}:`, error);
+      setErrorMessage(`Error posting to ${platform}: ${error}`);
+      const dialog = document.querySelector('dialog');
+      dialog?.showModal();
     }
   };
 
@@ -254,6 +271,24 @@ export default function Home() {
                     }))}
                   />
                   <button type="submit">Post to {providerNames[platform]}</button>
+                  {platform === "twitter" && twitterPostResult && (
+                    <div>
+                      <h4>Posted!</h4>
+                      <p><a href={`https://x.com/anybody/status/${twitterPostResult.data.id}`} target="_blank">See tweet</a></p>
+                    </div>
+                  )}
+                  {platform === "linkedin" && linkedinPostResult && (
+                    <div>
+                      <h4>Posted!</h4>
+                      <p><a href={`https://www.linkedin.com/feed/update/${linkedinPostResult.id}`} target="_blank">See post</a></p>
+                    </div>
+                  )}
+                  {platform === "bluesky" && blueskyPostResult && (
+                    <div>
+                      <h4>Posted!</h4>
+                      <p><a href={blueskyPostResult.url} target="_blank">See post</a></p>
+                    </div>
+                  )}
                 </div>
               </form>
             </div>

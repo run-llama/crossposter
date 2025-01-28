@@ -194,7 +194,7 @@ export default class LinkedinPostShare {
             authorURN = await this.getPersonURN();
             if (!authorURN) {
                 console.error('Cannot get person URN');
-                return;
+                return false;
             }
         } else {
             authorURN = organizationURN;
@@ -203,13 +203,13 @@ export default class LinkedinPostShare {
         const imageUploadRequest = await this.createImageUploadRequest(authorURN);
         if (!imageUploadRequest) {
             console.error('Cannot create image upload request');
-            return;
+            return false;
         }
 
         const uploadedImageData = await this.uploadImage(image, imageUploadRequest.value.uploadUrl);
         if (!uploadedImageData) {
             console.error('Cannot upload the image');
-            return;
+            return false;
         }
 
         const imageId = imageUploadRequest.value.image;
@@ -251,7 +251,9 @@ export default class LinkedinPostShare {
                 console.error('Image not created. Status code: ', data.status);
                 return false;
             }
-            return true;
+            return {
+                id: data.headers['x-restli-id']
+            }
         } catch (e) {
             if (e instanceof AxiosError) {
                 console.error('Cannot create post. Error: ', e.response?.data);

@@ -25,13 +25,7 @@ export default class BlueSkyPoster {
 
     async post(text: string, media: Buffer | null) {
 
-        // okay! We have to translate all the mentions into text aspects
-        // first we do a regex to extract all the handles and their URLs
-        // then we replace all the handles with bare @-mentions
-        // then for each handle, we
-        //    find the index of the handle in the text
-        //    add a text aspect to the payload mentioning that text
-        //    update the skip index so we don't re-process the same handle
+        // get all the mentions
         const handleRegex = /@\[([^\]]+)\]\(([^)]+)\)/g;
         const matches = [...text.matchAll(handleRegex)];
 
@@ -53,6 +47,7 @@ export default class BlueSkyPoster {
 
         console.log("Processed text", processedText)
 
+        // RichText takes care of the mentions
         const rt = new RichText({
             text: processedText,
           })
@@ -61,7 +56,7 @@ export default class BlueSkyPoster {
         const payload = {
             text: processedText.slice(0, 300),
             createdAt: new Date().toISOString(),
-            facets: rt.facets,
+            facets: rt.facets, // this is how mentions get added
         }
 
         if (media) {

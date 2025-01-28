@@ -53,25 +53,35 @@ const getTwitterHandles = async (controller: ReadableStreamDefaultController, ex
     const searchPromises = Object.values(extractedEntities).map(async (entityValue: string) => {
         sendResponse(controller, "Looking up Twitter handle for " + entityValue);
 
-        let agentResponse = await twitterAgent.chat({
-            message: `
-                Your goal is to find the Twitter account of the given entity. 
+        let agentResponse = null;
+        try {
+            agentResponse = await twitterAgent.chat({
+                message: `
+                    Your goal is to find the Twitter account of the given entity. 
                 These days Twitter is also called X, so it might be "X account" or "Twitter account". Search the web for "${entityValue} twitter account". You'll get a list of results.
                 Pick the one that is most likely to be the Twitter/X account of the given entity.
                 Return the FULL URL ONLY. If none of the results seem to be the Twitter/X account of the given entity, return "NOT FOUND" only.
             `
             });
+        } catch (error) {
+            console.error("Error running agent to find Twitter handle", error);
+        }
 
         console.log("Twitter Agent response: ", agentResponse.message.content[0].text);
 
-        let response = await Settings.llm.complete({
-            prompt: `
-                You're given the output of an agent running a search. It has either found a URL or not. If it found a URL, return that URL ONLY. If it didn't find a URL, return "NOT FOUND" only.
-                <agentresponse>
-                ${forceUTF8(agentResponse.message.content[0].text)}
-                </agentresponse>
-            `
-        });
+        let response = null;
+        try {            
+            response = await Settings.llm.complete({
+                prompt: `
+                    You're given the output of an agent running a search. It has either found a URL or not. If it found a URL, return that URL ONLY. If it didn't find a URL, return "NOT FOUND" only.
+                    <agentresponse>
+                    ${forceUTF8(agentResponse.message.content[0].text)}
+                    </agentresponse>
+                `
+            });
+        } catch (error) {
+            console.error("Error running LLM to clean up agent response about twitter", error);
+        }
 
         const result = response.text;
         console.log("Twitter search result: ", result);
