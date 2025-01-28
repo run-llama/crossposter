@@ -11,16 +11,22 @@ export function AuthButtons({
   isBlueskyModalOpen, 
   setIsBlueskyModalOpen,
   dialogRef,
+  linkedInOrgDialogRef,
   selectedPlatform,
-  setSelectedPlatform
+  setSelectedPlatform,
+  linkedInOrganization,
+  setLinkedInOrganization
 }: {
   user: any, 
   setUser: (user: any) => void,
   isBlueskyModalOpen: boolean, 
   setIsBlueskyModalOpen: (open: boolean) => void,
   dialogRef: React.RefObject<HTMLDialogElement>,
+  linkedInOrgDialogRef: React.RefObject<HTMLDialogElement>,
   selectedPlatform: string | null,
-  setSelectedPlatform: (platform: string | null) => void
+  setSelectedPlatform: (platform: string | null) => void,
+  linkedInOrganization: string | null,
+  setLinkedInOrganization: (organization: string | null) => void
 }) {
 
   const handleDeauthorize = async (platform: string) => {
@@ -43,37 +49,60 @@ export function AuthButtons({
     dialogRef.current?.close();
   };
 
-  const providerConfig = {
-    'twitter': {
-      name: "Twitter",
-      icon: <FaTwitter className={styles.icon} />
-    },
-    'linkedin': {
-      name: "LinkedIn",
-      icon: <FaLinkedin className={styles.icon} />
-    },
+  const handleSetLinkedInOrg = async () => {
+    const input = document.querySelector<HTMLInputElement>('#linkedin-org-input');
+    if (input) {
+      const formData = new FormData();
+      formData.append('organization', input.value);
+      const response = await fetch('/api/user/set-linkedin-organization', {
+        method: 'POST',
+        body: formData
+      });
+      const result = await response.json();
+      console.log("Result", result)
+      setLinkedInOrganization(result.linkedin_company);
+    }
+    linkedInOrgDialogRef.current?.close();
+  };
+
+  const modifyLinkedInOrganization = () => {
+    linkedInOrgDialogRef.current?.showModal();
   };
 
   return (
     <div className={styles.container}>
       <div className={styles.iconRow}>
-        {Object.entries(providerConfig).map(([provider, config]) => {
-          const tokenField = `${provider}_token` as keyof typeof user;
-          return user && user[tokenField] ? (
-            <div 
-              key={provider} 
-              className={styles.connectedIcon}
-              onClick={() => handleDeauthorize(provider)}
-              style={{ cursor: 'pointer' }}
-            >
-              {config.icon}
-            </div>
-          ) : (
-            <button key={provider} onClick={() => signIn(provider)} className={styles.disconnectedIcon}>
-              {config.icon} Connect {config.name}
-            </button>
-          );
-        })}      
+        {user && user['twitter_token'] ? (
+          <div 
+            key="twitter" 
+            className={styles.connectedIcon}
+            onClick={() => handleDeauthorize('twitter')}
+            style={{ cursor: 'pointer' }}
+          >
+            <FaTwitter className={styles.icon} />
+          </div>
+        ) : (
+          <button key="twitter" onClick={() => signIn('twitter')} className={styles.disconnectedIcon}>
+            <FaTwitter className={styles.icon} /> Connect Twitter
+          </button>
+        )}
+        {user && user['linkedin_token'] ? (
+          <div 
+            key="linkedin" 
+            className={styles.connectedIcon}
+          >
+            <FaLinkedin className={styles.icon} onClick={() => handleDeauthorize('linkedin')}
+            style={{ cursor: 'pointer' }} />
+            <div id={styles.linkedInOrganization}> as <span 
+              id={styles.linkedInOrganizationName}
+              onClick={() => modifyLinkedInOrganization()}
+            >{linkedInOrganization || "yourself"}</span></div>
+          </div>
+        ) : (
+          <button key="linkedin" onClick={() => signIn('linkedin')} className={styles.disconnectedIcon}>
+            <FaLinkedin className={styles.icon} /> Connect LinkedIn
+          </button>
+        )}
         {user && user['bluesky_token'] ? (
           <div 
             key="bluesky" 
@@ -98,6 +127,17 @@ export function AuthButtons({
         <div className={styles.dialogButtons}>
           <button onClick={() => dialogRef.current?.close()}>No</button>
           <button onClick={handleConfirmDeauthorize}>Yes</button>
+        </div>
+      </dialog>
+
+      <dialog ref={linkedInOrgDialogRef} className={styles.dialog}>
+        <div>
+          <label htmlFor="linkedin-org-input">Organization vanity name:</label>
+          <input type="text" id="linkedin-org-input" />
+        </div>
+        <div className={styles.dialogButtons}>
+          <button onClick={() => linkedInOrgDialogRef.current?.close()}>Cancel</button>
+          <button onClick={handleSetLinkedInOrg}>Set</button>
         </div>
       </dialog>
 

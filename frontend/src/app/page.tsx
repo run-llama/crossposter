@@ -7,16 +7,18 @@ import providerNames from '@/util/platformNames'
 
 export default function Home() {
   const { data: session, status } = useSession();
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const linkedInOrgDialogRef = useRef<HTMLDialogElement>(null);
   const [draftText, setDraftText] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [user, setUser] = useState(null);
   const [isBlueskyModalOpen, setIsBlueskyModalOpen] = useState(false);
   const [editableDrafts, setEditableDrafts] = useState<Record<string, string>>({});
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const dialogRef = useRef<HTMLDialogElement>(null);
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
   const [handles, setHandles] = useState<Record<string, string>>();
   const [eventsList, setEventsList] = useState<string[]>([]);
+  const [linkedInOrganization, setLinkedInOrganization] = useState<string | null>(null);
 
   useEffect(() => {
     if (session) {
@@ -24,6 +26,7 @@ export default function Home() {
         const response = await fetch('/api/user/fetch');
         const userData = await response.json();
         setUser(userData);
+        setLinkedInOrganization(userData.linkedin_company);
       };
       fetchUser();
     }
@@ -84,7 +87,6 @@ export default function Home() {
         if (data.msg === 'Workflow completed') {
           eventSource.close();
           setEditableDrafts(data.result);
-          console.log("Got handles", data.handles)
           setHandles(data.handles);
           return
         }       
@@ -149,8 +151,11 @@ export default function Home() {
         isBlueskyModalOpen={isBlueskyModalOpen} 
         setIsBlueskyModalOpen={setIsBlueskyModalOpen} 
         dialogRef={dialogRef}
+        linkedInOrgDialogRef={linkedInOrgDialogRef}
         selectedPlatform={selectedPlatform}
         setSelectedPlatform={setSelectedPlatform}
+        linkedInOrganization={linkedInOrganization}
+        setLinkedInOrganization={setLinkedInOrganization}
       />
       <div className="createDraftsBox">
         <div className="container">

@@ -66,3 +66,12 @@
 .signOutButton {
   margin-left: auto;
 } 
+
+#linkedInOrganization {
+  display: inline;
+  position: relative;
+  top: -5px;
+}
+#linkedInOrganizationName:hover {
+    text-decoration: underline;
+}
