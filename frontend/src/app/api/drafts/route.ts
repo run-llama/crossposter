@@ -44,14 +44,16 @@ Settings.llm = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-const agent = new ReActAgent({tools: [searchWeb]});
+const twitterAgent = new ReActAgent({tools: [searchWeb]});
+const linkedInAgent = new ReActAgent({tools: [searchWeb]});
+const blueskyAgent = new ReActAgent({tools: [searchWeb]});
 
 const getTwitterHandles = async (controller: ReadableStreamDefaultController, extractedEntities: any) => {
     const twitterHandles = {};
     const searchPromises = Object.values(extractedEntities).map(async (entityValue: string) => {
         sendResponse(controller, "Looking up Twitter handle for " + entityValue);
 
-        let agentResponse = await agent.chat({
+        let agentResponse = await twitterAgent.chat({
             message: `
                 Your goal is to find the Twitter account of the given entity. 
                 These days Twitter is also called X, so it might be "X account" or "Twitter account". Search the web for "${entityValue} twitter account". You'll get a list of results.
@@ -100,7 +102,7 @@ const getLinkedInHandles = async (controller: ReadableStreamDefaultController, e
     const searchPromises = Object.values(extractedEntities).map(async (entityValue: string) => {
         sendResponse(controller, "Looking up LinkedIn handle for " + entityValue);
 
-        const agentResponse = await agent.chat({
+        const agentResponse = await linkedInAgent.chat({
             message: `
                 Your goal is to find the LinkedIn account of the given entity. 
                 Search the web for "${entityValue} linkedin". You'll get a list of results.
@@ -179,7 +181,7 @@ const getBlueskyHandles = async (controller: ReadableStreamDefaultController, ex
     const searchPromises = Object.values(extractedEntities).map(async (entityValue: string) => {
         sendResponse(controller, "Looking up Bluesky handle for " + entityValue);
 
-        const agentResponse = await agent.chat({
+        const agentResponse = await blueskyAgent.chat({
             message: `
                 Your goal is to find the Bluesky account of the given entity. 
                 Search the web for "${entityValue} bluesky". You'll get a list of results.
