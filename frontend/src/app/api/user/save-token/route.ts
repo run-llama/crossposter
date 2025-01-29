@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    return NextResponse.redirect(new URL('/', request.url));
+    return NextResponse.redirect(new URL('/', process.env.BASE_URL));
   } catch (error) {
     console.error("Error saving token:", error.stack);
     return NextResponse.json(
