@@ -163,7 +163,7 @@ const getLinkedInHandles = async (controller: ReadableStreamDefaultController, e
 
         // FIXME: if the entity is a person, we won't be able to @-mention them
         // (see linkedInPostShare.ts) so we return null.
-        if (handle.includes("linkedin.com/in/")) {
+        if (handle && handle.includes("linkedin.com/in/")) {
             handle = null;
         }
 
