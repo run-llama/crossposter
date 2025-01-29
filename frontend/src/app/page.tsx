@@ -81,6 +81,7 @@ export default function Home() {
       // Handle incoming events
       setHandles(null)
       setEventsList(["Creating drafts..."]);
+      setEditableDrafts({})
     
       eventSource.onmessage = (event) => {
         const data = JSON.parse(event.data);

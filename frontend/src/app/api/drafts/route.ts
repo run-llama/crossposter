@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { Anthropic } from "llamaindex";
-import { FunctionTool, ReActAgent, Settings } from "llamaindex";
+import { Anthropic, OpenAI } from "llamaindex";
+import { FunctionTool, ReActAgent, AnthropicAgent, OpenAIAgent, Settings } from "llamaindex";
 import { getJson } from "serpapi";
 
 const searchWeb = FunctionTool.from(
@@ -11,9 +11,17 @@ const searchWeb = FunctionTool.from(
         engine: "google",
         api_key: process.env.SERP_API_KEY,
         q: query,
-        location: "Austin, Texas",
+        location: "San Francisco, California",
       });
-      return response;
+      let filteredResponse = response.organic_results.map((result: any, index: number) => {
+        return {
+            title: result.title,
+            link: result.link,
+            snippet: result.snippet.replaceAll("·", "").replaceAll("...", "")
+        }
+      })
+      console.log(`web search response for ${query}: `, filteredResponse);
+      return filteredResponse;
   },
   {
     name: "searchWeb",
@@ -35,13 +43,13 @@ const sendResponse = (controller: ReadableStreamDefaultController, message: stri
     controller.enqueue(`data: ${JSON.stringify({msg: message})}\n\n`);
 }
 
-const forceUTF8 = (text: string) => {
-    return Buffer.from(text).toString('utf8');
-}
-
 Settings.llm = new Anthropic({
     model: "claude-3-5-sonnet-20240620",
     apiKey: process.env.ANTHROPIC_API_KEY,
+});
+let openaiLLM = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+    model: "gpt-4o-mini",
 });
 
 const twitterAgent = new ReActAgent({tools: [searchWeb]});
@@ -57,14 +65,14 @@ const getTwitterHandles = async (controller: ReadableStreamDefaultController, ex
         try {
             agentResponse = await twitterAgent.chat({
                 message: `
-                    Your goal is to find the Twitter account of the given entity. 
+                Your goal is to find the Twitter account of the given entity. 
                 These days Twitter is also called X, so it might be "X account" or "Twitter account". Search the web for "${entityValue} twitter account". You'll get a list of results.
                 Pick the one that is most likely to be the Twitter/X account of the given entity.
                 Return the FULL URL ONLY. If none of the results seem to be the Twitter/X account of the given entity, return "NOT FOUND" only.
             `
             });
         } catch (error) {
-            console.error("Error running agent to find Twitter handle", error);
+            console.error(`Error running agent to find Twitter handle for ${entityValue}`, error);
         }
 
         console.log("Twitter Agent response: ", agentResponse.message.content[0].text);
@@ -75,7 +83,7 @@ const getTwitterHandles = async (controller: ReadableStreamDefaultController, ex
                 prompt: `
                     You're given the output of an agent running a search. It has either found a URL or not. If it found a URL, return that URL ONLY. If it didn't find a URL, return "NOT FOUND" only.
                     <agentresponse>
-                    ${forceUTF8(agentResponse.message.content[0].text)}
+                    ${agentResponse.message.content[0].text}
                     </agentresponse>
                 `
             });
@@ -112,26 +120,37 @@ const getLinkedInHandles = async (controller: ReadableStreamDefaultController, e
     const searchPromises = Object.values(extractedEntities).map(async (entityValue: string) => {
         sendResponse(controller, "Looking up LinkedIn handle for " + entityValue);
 
-        const agentResponse = await linkedInAgent.chat({
-            message: `
-                Your goal is to find the LinkedIn account of the given entity. 
-                Search the web for "${entityValue} linkedin". You'll get a list of results.
-                Pick the one that is most likely to be the LinkedIn account of the given entity.
-                Return the URL of that LinkedIn account. Return the URL ONLY. If none of the results
-                seem to be the LinkedIn account of the given entity, return "NOT FOUND" only.
-            `
-        });
+        let agentResponse = null;
+        try {
+            agentResponse = await linkedInAgent.chat({
+                message: `
+                    Your goal is to find the LinkedIn account of the given entity. 
+                    Search the web for "${entityValue} linkedin". You'll get a list of results.
+                    Pick the one that is most likely to be the LinkedIn account of the given entity.
+                    Return the URL of that LinkedIn account. Return the URL ONLY. If none of the results
+                    seem to be the LinkedIn account of the given entity, return "NOT FOUND" only.
+                `
+            });
+        } catch (error) {
+            console.error(`Error running agent to find LinkedIn handle for ${entityValue}`, error);
+            console.error("Stack: ", error.stack);
+        }
 
         console.log("LinkedIn Agent response: ", agentResponse.message.content[0].text);
 
-        const response = await Settings.llm.complete({
-            prompt: `
-                You're given the output of an agent running a search. It has either found a URL or not. If it found a URL, return that URL ONLY. If it didn't find a URL, return "NOT FOUND" only.
-                <agentresponse>
-                ${forceUTF8(agentResponse.message.content[0].text)}
-                </agentresponse>
-            `
-        });
+        let response = null;
+        try {
+            response = await Settings.llm.complete({
+                prompt: `
+                    You're given the output of an agent running a search. It has either found a URL or not. If it found a URL, return that URL ONLY. If it didn't find a URL, return "NOT FOUND" only.
+                    <agentresponse>
+                    ${agentResponse.message.content[0].text}
+                    </agentresponse>
+                `
+            });
+        } catch (error) {
+            console.error("Error running LLM to clean up agent response about linkedin", error);
+        }
 
         const result = response.text;
         console.log("LinkedIn search result: ", result);
@@ -162,25 +181,27 @@ const getLinkedInHandles = async (controller: ReadableStreamDefaultController, e
 const translateBlueSkyURLToHandle = async (url: string) => {
 
     if (!url) return null;
+
+    let handle = null
     
     const matches = url.match(/did:plc:[a-z0-9]+/);
-    if (!matches) {
-        console.log(`${url} doesn't look like a bluesky DID`)
-        return null;
-    }
+    if (matches) {
+        const did = matches[0];
 
-    const did = matches[0];
-
-    let handle = null;
-    try {
-        const response = await fetch(`https://plc.directory/${did}`);
-        const data = await response.json();
-        handle = data.alsoKnownAs[0];
-        if (handle.startsWith('at://')) {
-            handle = handle.substring(5);
+        try {
+            const response = await fetch(`https://plc.directory/${did}`);
+            const data = await response.json();
+            handle = data.alsoKnownAs[0];
+            if (handle.startsWith('at://')) {
+                handle = handle.substring(5);
+            }
+        } catch (error) {
+            console.error('Error translating Bluesky DID URL tohandle:', error);
+            throw error;
         }
-    } catch (error) {
-        console.error('Error translating Bluesky DID URL tohandle:', error);
+    } else {
+        console.log(`${url} doesn't look like a bluesky DID, maybe it's the actual URL?`)
+        handle = url.split("https://bsky.app/profile/")[1].split("?")[0];
     }
 
     return handle;
@@ -195,7 +216,7 @@ const getBlueskyHandles = async (controller: ReadableStreamDefaultController, ex
             message: `
                 Your goal is to find the Bluesky account of the given entity. 
                 Search the web for "${entityValue} bluesky". You'll get a list of results.
-                Pick the one that is most likely to be the Bluesky account of the given entity.
+                Pick the one that is most likely to be the Bluesky account of the given entity. Sometimes Bluesky accounts have ugly URLs like "did:plc:..." but if the title and description match, it might be the right one.
                 Return the URL of that Bluesky account. Return the URL ONLY. If none of the results
                 seem to be the Bluesky account of the given entity, return "NOT FOUND" only.
             `
@@ -207,7 +228,7 @@ const getBlueskyHandles = async (controller: ReadableStreamDefaultController, ex
             prompt: `
                 You're given the output of an agent running a search. It has either found a URL or not. If it found a URL, return that URL ONLY. If it didn't find a URL, return "NOT FOUND" only.
                 <agentresponse>
-                ${forceUTF8(agentResponse.message.content[0].text)}
+                ${agentResponse.message.content[0].text}
                 </agentresponse>
             `
         });
