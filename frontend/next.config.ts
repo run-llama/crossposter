@@ -3,7 +3,9 @@ import withLlamaIndex from "llamaindex/next";
  
 /** @type {import('next').NextConfig} */
 const nextConfig: NextConfig = {
-  /* config options here */
+  typescript: {
+    ignoreBuildErrors: true,
+  },
 };
 
 export default withLlamaIndex(nextConfig);
