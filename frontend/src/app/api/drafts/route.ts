@@ -20,7 +20,7 @@ const searchWeb = FunctionTool.from(
             snippet: result.snippet.replaceAll("·", "").replaceAll("...", "")
         }
       })
-      console.log(`web search response for ${query}: `, filteredResponse);
+      //console.log(`web search response for ${query}: `, filteredResponse);
       return filteredResponse;
   },
   {
@@ -201,7 +201,7 @@ const translateBlueSkyURLToHandle = async (url: string) => {
         }
     } else {
         console.log(`${url} doesn't look like a bluesky DID, maybe it's the actual URL?`)
-        handle = url.split("https://bsky.app/profile/")[1].split("?")[0];
+        handle = url.split("/").pop()?.split("?")[0];
     }
 
     return handle;
