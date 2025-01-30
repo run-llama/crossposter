@@ -143,7 +143,12 @@ export default class LinkedinPostShare {
         return text.replace(/[|{}@\[\]()<>\\*_~+]/gm, '');
     }
 
-    async createPostWithImageForOrganization(post: string, image: Buffer, imageAlt?: string, organizationName: string): Promise<boolean | undefined> {
+    async createPostWithImageForOrganization(
+        post: string,
+        image: Buffer,
+        organizationName: string,
+        imageAlt?: string
+    ): Promise<{ id: string } | undefined> {
         const organizationUrn = await this.getOrganizationURN(organizationName);
         if (!organizationUrn) {
             console.error('Cannot get organization URN');
@@ -152,7 +157,12 @@ export default class LinkedinPostShare {
         return this.createPostWithImage(post, image, imageAlt, organizationUrn);
     }
 
-    async createPostWithImage(post: string, image: Buffer, imageAlt?: string, organizationURN: string | null = null): Promise<boolean | undefined> {
+    async createPostWithImage(
+        post: string,
+        image: Buffer,
+        imageAlt?: string,
+        organizationURN: string | null = null
+    ): Promise<{ id: string } | undefined> {
 
         post = this.removeLinkedinReservedCharacters(post);
 
@@ -196,7 +206,7 @@ export default class LinkedinPostShare {
             authorURN = await this.getPersonURN();
             if (!authorURN) {
                 console.error('Cannot get person URN');
-                return false;
+                return;
             }
         } else {
             authorURN = organizationURN;
@@ -205,13 +215,13 @@ export default class LinkedinPostShare {
         const imageUploadRequest = await this.createImageUploadRequest(authorURN);
         if (!imageUploadRequest) {
             console.error('Cannot create image upload request');
-            return false;
+            return;
         }
 
         const uploadedImageData = await this.uploadImage(image, imageUploadRequest.value.uploadUrl);
         if (!uploadedImageData) {
             console.error('Cannot upload the image');
-            return false;
+            return;
         }
 
         const imageId = imageUploadRequest.value.image;
@@ -251,7 +261,7 @@ export default class LinkedinPostShare {
 
             if (data.status !== 201) {
                 console.error('Image not created. Status code: ', data.status);
-                return false;
+                return;
             }
             return {
                 id: data.headers['x-restli-id']

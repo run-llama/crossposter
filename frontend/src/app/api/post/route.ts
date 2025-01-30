@@ -97,7 +97,7 @@ export async function POST(req: Request, res: Response) {
         
         const linkedinPostShare = new LinkedinPostShare(linkedInToken);
         if (user.linkedin_company) {
-          result = await linkedinPostShare.createPostWithImageForOrganization(post, linkedInMediaBuffer, imageAlt, user.linkedin_company);
+          result = await linkedinPostShare.createPostWithImageForOrganization(post, linkedInMediaBuffer, user.linkedin_company, imageAlt);
         } else {
           result = await linkedinPostShare.createPostWithImage(post, linkedInMediaBuffer, imageAlt);
         }

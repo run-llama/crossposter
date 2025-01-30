@@ -1,4 +1,5 @@
-export type Profile = {
+export interface Profile {
+    sub: string;
     firstName: {
       localized: {
         en_US: string;
@@ -34,7 +35,7 @@ export type Profile = {
     profilePicture: {
       displayImage: string;
     };
-  };
+  }
   
   export type ImageUpload = {
     value: {
