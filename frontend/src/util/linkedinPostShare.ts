@@ -1,3 +1,5 @@
+/* Adapted from https://github.com/melvin2016/linkedin-post-share */
+
 import axios, { AxiosError } from 'axios';
 
 // Types

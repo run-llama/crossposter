@@ -57,8 +57,11 @@ const linkedInAgent = new ReActAgent({tools: [searchWeb]});
 const blueskyAgent = new ReActAgent({tools: [searchWeb]});
 
 const getTwitterHandles = async (controller: ReadableStreamDefaultController, extractedEntities: any) => {
-    const twitterHandles = {};
-    const searchPromises = Object.values(extractedEntities).map(async (entityValue: string) => {
+    const twitterHandles: Record<string, string | null> = {};
+    const searchPromises = Object.values(extractedEntities).map(async (entityValue: unknown) => {
+        if (typeof entityValue !== 'string') {
+            throw new Error('Entity value must be a string');
+        }
         sendResponse(controller, "Looking up Twitter handle for " + entityValue);
 
         let agentResponse = null;
@@ -71,11 +74,17 @@ const getTwitterHandles = async (controller: ReadableStreamDefaultController, ex
                 Return the FULL URL ONLY. If none of the results seem to be the Twitter/X account of the given entity, return "NOT FOUND" only.
             `
             });
+
+            console.log("Twitter Agent response: ", (agentResponse?.message?.content[0] as { text: string })?.text || "No response");
+
         } catch (error) {
             console.error(`Error running agent to find Twitter handle for ${entityValue}`, error);
+            return [entityValue, null];
         }
 
-        console.log("Twitter Agent response: ", agentResponse.message.content[0].text);
+        if (!(agentResponse?.message?.content[0] as { text: string })?.text) {
+            return [entityValue, null];
+        }
 
         let response = null;
         try {            
@@ -83,12 +92,13 @@ const getTwitterHandles = async (controller: ReadableStreamDefaultController, ex
                 prompt: `
                     You're given the output of an agent running a search. It has either found a URL or not. If it found a URL, return that URL ONLY. If it didn't find a URL, return "NOT FOUND" only.
                     <agentresponse>
-                    ${agentResponse.message.content[0].text}
+                    ${(agentResponse?.message?.content[0] as { text: string }).text ?? "NOT FOUND"}
                     </agentresponse>
                 `
             });
         } catch (error) {
             console.error("Error running LLM to clean up agent response about twitter", error);
+            return [entityValue, null];
         }
 
         const result = response.text;
@@ -116,8 +126,11 @@ const getTwitterHandles = async (controller: ReadableStreamDefaultController, ex
 }
 
 const getLinkedInHandles = async (controller: ReadableStreamDefaultController, extractedEntities: any) => {
-    const linkedInHandles = {};
-    const searchPromises = Object.values(extractedEntities).map(async (entityValue: string) => {
+    const linkedInHandles: Record<string, string | null> = {};
+    const searchPromises = Object.values(extractedEntities).map(async (entityValue: unknown) => {
+        if (typeof entityValue !== 'string') {
+            throw new Error('Entity value must be a string');
+        }
         sendResponse(controller, "Looking up LinkedIn handle for " + entityValue);
 
         let agentResponse = null;
@@ -133,10 +146,14 @@ const getLinkedInHandles = async (controller: ReadableStreamDefaultController, e
             });
         } catch (error) {
             console.error(`Error running agent to find LinkedIn handle for ${entityValue}`, error);
-            console.error("Stack: ", error.stack);
+            console.error("Stack: ", (error as Error).stack);
         }
 
-        console.log("LinkedIn Agent response: ", agentResponse.message.content[0].text);
+        if (!(agentResponse?.message?.content[0] as { text: string })?.text) {
+            return [entityValue, null];
+        }
+
+        console.log("LinkedIn Agent response: ", (agentResponse?.message?.content[0] as { text: string })?.text);
 
         let response = null;
         try {
@@ -144,12 +161,16 @@ const getLinkedInHandles = async (controller: ReadableStreamDefaultController, e
                 prompt: `
                     You're given the output of an agent running a search. It has either found a URL or not. If it found a URL, return that URL ONLY. If it didn't find a URL, return "NOT FOUND" only.
                     <agentresponse>
-                    ${agentResponse.message.content[0].text}
+                    ${(agentResponse?.message?.content[0] as { text: string })?.text ?? "NOT FOUND"}
                     </agentresponse>
                 `
             });
         } catch (error) {
             console.error("Error running LLM to clean up agent response about linkedin", error);
+        }
+
+        if (!response) {
+            return [entityValue, null];
         }
 
         const result = response.text;
@@ -208,8 +229,11 @@ const translateBlueSkyURLToHandle = async (url: string) => {
 }
 
 const getBlueskyHandles = async (controller: ReadableStreamDefaultController, extractedEntities: any) => {
-    const blueskyHandles = {};
-    const searchPromises = Object.values(extractedEntities).map(async (entityValue: string) => {
+    const blueskyHandles: Record<string, string | null> = {};
+    const searchPromises = Object.values(extractedEntities).map(async (entityValue: unknown) => {
+        if (typeof entityValue !== 'string') {
+            throw new Error('Entity value must be a string');
+        }
         sendResponse(controller, "Looking up Bluesky handle for " + entityValue);
 
         const agentResponse = await blueskyAgent.chat({
@@ -222,16 +246,24 @@ const getBlueskyHandles = async (controller: ReadableStreamDefaultController, ex
             `
         });
 
-        console.log("Bluesky Agent response: ", agentResponse.message.content[0].text);
+        if (!(agentResponse?.message?.content[0] as { text: string })?.text) {
+            return [entityValue, null];
+        }
+
+        console.log("Bluesky Agent response: ", (agentResponse?.message?.content[0] as { text: string })?.text);
 
         const response = await Settings.llm.complete({
             prompt: `
                 You're given the output of an agent running a search. It has either found a URL or not. If it found a URL, return that URL ONLY. If it didn't find a URL, return "NOT FOUND" only.
                 <agentresponse>
-                ${agentResponse.message.content[0].text}
+                ${(agentResponse?.message?.content[0] as { text: string })?.text ?? "NOT FOUND"}
                 </agentresponse>
             `
         });
+
+        if (!response) {
+            return [entityValue, null];
+        }
 
         const result = response.text;
         console.log("Bluesky search result: ", result);
@@ -338,7 +370,7 @@ export async function GET(request: Request) {
 
                 sendResponse(controller, `Got all handles`);
 
-                const drafts = {}
+                const drafts: Record<string, string> = {};
                 for (const platform in handles) {
                     console.log("Platform: ", platform);
                     console.log("Handles: ", handles[platform]);
