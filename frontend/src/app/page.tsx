@@ -5,10 +5,27 @@ import { useSession, signIn, signOut } from 'next-auth/react';
 import { AuthButtons } from '@/components/AuthButtons'
 import providerNames from '@/util/platformNames'
 
+type HandleMap = Record<string, Record<string, string>>;
+
+// Add this interface near the top of the file, after the HandleMap type
+interface TwitterPostResponse {
+  data: {
+    id: string;
+  }
+}
+
+interface LinkedInPostResponse {
+  id: string;
+}
+
+interface BlueskyPostResponse {
+  url: string;
+}
+
 export default function Home() {
   const { data: session, status } = useSession();
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const linkedInOrgDialogRef = useRef<HTMLDialogElement>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null) as React.RefObject<HTMLDialogElement>;
+  const linkedInOrgDialogRef = useRef<HTMLDialogElement>(null) as React.RefObject<HTMLDialogElement>;
   const [draftText, setDraftText] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [user, setUser] = useState(null);
@@ -16,12 +33,12 @@ export default function Home() {
   const [editableDrafts, setEditableDrafts] = useState<Record<string, string>>({});
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
-  const [handles, setHandles] = useState<Record<string, string>>();
+  const [handles, setHandles] = useState<HandleMap | undefined>();
   const [eventsList, setEventsList] = useState<string[]>([]);
   const [linkedInOrganization, setLinkedInOrganization] = useState<string | null>(null);
-  const [twitterPostResult, setTwitterPostResult] = useState<string | null>(null);
-  const [linkedinPostResult, setLinkedinPostResult] = useState<string | null>(null);
-  const [blueskyPostResult, setBlueskyPostResult] = useState<string | null>(null);
+  const [twitterPostResult, setTwitterPostResult] = useState<TwitterPostResponse | null>(null);
+  const [linkedinPostResult, setLinkedinPostResult] = useState<LinkedInPostResponse | null>(null);
+  const [blueskyPostResult, setBlueskyPostResult] = useState<BlueskyPostResponse | null>(null);
   
   useEffect(() => {
     if (session) {
@@ -79,7 +96,7 @@ export default function Home() {
       }));
 
       // Handle incoming events
-      setHandles(null)
+      setHandles(undefined)
       setEventsList(["Creating drafts..."]);
       setEditableDrafts({})
     
@@ -237,7 +254,7 @@ export default function Home() {
               {Object.keys(handles).map(
                 (platform) => (
                   <div className="platform" key={platform}>
-                    <h3>{providerNames[platform]}</h3>
+                    <h3>{providerNames[platform as keyof typeof providerNames]}</h3>
                     {Object.keys(handles[platform]).map((handle) => (
                       <div key={platform + "_" + handle}>{handle}: {handles[platform][handle]}</div>
                     ))}
@@ -257,7 +274,7 @@ export default function Home() {
         <div id="drafts">
           {Object.entries(editableDrafts).map(([platform, draft]) => (
             <div key={platform} className="draft">
-              <h3>{providerNames[platform]}</h3>
+              <h3>{providerNames[platform as keyof typeof providerNames]}</h3>
               <form onSubmit={async (e) => {
                 e.preventDefault();
                 await handlePost(platform, editableDrafts[platform]);
@@ -271,7 +288,7 @@ export default function Home() {
                       [platform]: e.target.value
                     }))}
                   />
-                  <button type="submit">Post to {providerNames[platform]}</button>
+                  <button type="submit">Post to {providerNames[platform as keyof typeof providerNames]}</button>
                   {platform === "twitter" && twitterPostResult && (
                     <div>
                       <h4>Posted!</h4>
