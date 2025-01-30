@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.redirect(new URL('/', process.env.BASE_URL));
   } catch (error) {
-    console.error("Error saving token:", error.stack);
+    console.error("Error saving token:", (error as Error).stack);
     return NextResponse.json(
       { error: "Failed to save token" },
       { status: 500 }
