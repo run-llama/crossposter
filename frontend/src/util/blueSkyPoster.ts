@@ -1,5 +1,5 @@
-import { AtpAgent } from '@atproto/api'
-import { RichText } from '@atproto/api'
+import { AtpAgent, RichText } from '@atproto/api'
+import { AppBskyRichtextFacet } from '@atproto/api'
 
 export default class BlueSkyPoster {
 
@@ -30,7 +30,7 @@ export default class BlueSkyPoster {
         const matches = [...text.matchAll(handleRegex)];
 
         // extract just one entity per handle
-        const entities = {}
+        const entities: Record<string, { url: string }> = {};
         for (const match of matches) {
             let [fullMatch, handle, url] = match;
             entities[handle] = {
@@ -53,7 +53,15 @@ export default class BlueSkyPoster {
           })
         await rt.detectFacets(this.agent)        
 
-        const payload = {
+        const payload: {
+            text: string;
+            createdAt: string;
+            facets: AppBskyRichtextFacet.Main[] | undefined;
+            embed?: {
+                $type: string;
+                images: { alt: string; image: any }[];
+            };
+        } = {
             text: processedText.slice(0, 300),
             createdAt: new Date().toISOString(),
             facets: rt.facets, // this is how mentions get added
