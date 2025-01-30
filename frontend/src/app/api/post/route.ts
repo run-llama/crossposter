@@ -16,12 +16,16 @@ export async function POST(req: Request, res: Response) {
   try {
     const prisma = new PrismaClient();
 
+    if (!session.user?.email) {
+      return NextResponse.json({ error: 'User email not found' }, { status: 400 });
+    }
+
     const user = await prisma.users.findUnique({
       where: { email: session.user?.email }
     });
 
-    if (!user || !user.twitter_token) {
-      return NextResponse.json({ error: 'Twitter token not found' }, { status: 400 });
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 400 });
     }
 
     const formData = await req.formData();
@@ -34,14 +38,22 @@ export async function POST(req: Request, res: Response) {
     let result = null;
     switch (platform) {
       case "twitter":
+        if (!user.twitter_token) {
+          return NextResponse.json({ error: 'Twitter token not found' }, { status: 400 });
+        }
+
         const twitterToken = JSON.parse(user.twitter_token)
 
+        if (!twitterToken.token || !twitterToken.secret) {
+          return NextResponse.json({ error: 'Twitter secrets not found' }, { status: 400 });
+        }
+
         const twitterClient = new TwitterApi({
-          appKey: process.env.TWITTER_OAUTH_1_KEY,
-          appSecret: process.env.TWITTER_OAUTH_1_SECRET,
+          appKey: process.env.TWITTER_OAUTH_1_KEY!,
+          appSecret: process.env.TWITTER_OAUTH_1_SECRET!,
           accessToken: twitterToken.token,
           accessSecret: twitterToken.secret,
-        });
+        } as any); // typescript thinks appKey and appSecret don't exist but they do
     
         console.log("Twitter user", await twitterClient.v2.me())
     
@@ -59,21 +71,29 @@ export async function POST(req: Request, res: Response) {
     
         result = await twitterClient.v2.tweet({
           text: text,
-          media: { media_ids: mediaIds }  
+          media: { media_ids: mediaIds as [string] }  
         });
         break;
       case "linkedin":
 
         const linkedInToken = user.linkedin_token
+
+        if (!linkedInToken) {
+          return NextResponse.json({ error: 'LinkedIn token not found' }, { status: 400 });
+        }
         
         const post = text;
-        const imageAlt = null;
+        let imageAlt;
 
         let linkedInMediaBuffer;
         if (media) {
           const arrayBuffer = await media.arrayBuffer();
           linkedInMediaBuffer = Buffer.from(arrayBuffer);
-        }        
+        }
+
+        if (!linkedInMediaBuffer) {
+          return NextResponse.json({ error: 'LinkedIn media not found' }, { status: 400 });
+        }
         
         const linkedinPostShare = new LinkedinPostShare(linkedInToken);
         if (user.linkedin_company) {
@@ -91,7 +111,11 @@ export async function POST(req: Request, res: Response) {
         break;
       case "bluesky":
 
-        const blueSkyAuth = JSON.parse(user.bluesky_token)
+        const blueSkyAuth = user.bluesky_token ? JSON.parse(user.bluesky_token) : null
+
+        if (!blueSkyAuth) {
+          return NextResponse.json({ error: 'Bluesky auth not found' }, { status: 400 });
+        }
 
         const blueSkyPoster = new BlueSkyPoster(blueSkyAuth)
         await blueSkyPoster.login()
@@ -115,13 +139,13 @@ export async function POST(req: Request, res: Response) {
         // add a URL for the post to the result
         // the profile name is the identifier; it can be a barename or a domain
         // if it's a barename, we need to add the domain
-        const profileName = blueSkyAuth.identifier
+        let profileName = blueSkyAuth.identifier
         if (!profileName.includes('.')) {
           profileName = `${profileName}.bsky.social`
         }
         // the post ID is the last part of the URI
         const postId = result.uri.split('/').pop()
-        result.url = `https://bsky.app/profile/${profileName}/post/${postId}`
+        result = { ...result, url: `https://bsky.app/profile/${profileName}/post/${postId}` }
 
         break;
       default:
