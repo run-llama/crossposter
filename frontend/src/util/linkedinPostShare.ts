@@ -53,16 +53,28 @@ export default class LinkedinPostShare {
     */
 
     async getOrganizationData(vanityName: string) {
+        const url = `https://api.linkedin.com/v2/organizations?q=vanityName&vanityName=${vanityName}`
+        console.log("Getting organization data with call:", url)
+
+
         const response = await fetch(
-            `https://api.linkedin.com/v2/organizations?q=vanityName&vanityName=${vanityName}`,
+            url,
             {
+                method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${this.accessToken}`
+                    'Authorization': `Bearer ${this.accessToken}`,
+                    'User-Agent': 'curl/8.7.1',
+                    'Accept': '*/*',
+                    'Connection': 'keep-alive',
+                    'Accept-Encoding': 'gzip, deflate, br'
                 }
             }
         );
         const result = await response.json();
         console.log(`Organization result for ${vanityName}`, result)
+        if (!result.elements[0]) return null
+
+
         return result.elements[0]
     }
 
@@ -167,7 +179,9 @@ export default class LinkedinPostShare {
         post = this.removeLinkedinReservedCharacters(post);
 
         // Extract company names from LinkedIn URLs
-        const companyUrlRegex = /https:\/\/www\.linkedin\.com\/company\/([^\/\s']+)/g;
+        // ignore any trailing punctuation after the company name
+        //const companyUrlRegex = /https:\/\/www\.linkedin\.com\/company\/([^\/\s']+)[^\/\s']*$/g;
+        const companyUrlRegex = /https:\/\/www\.linkedin\.com\/company\/([a-zA-Z0-9-]+)(?![a-zA-Z0-9-])/g
         const matches = [...post.matchAll(companyUrlRegex)];
         
         // Fetch organization data for each company
@@ -175,13 +189,18 @@ export default class LinkedinPostShare {
         for (const match of matches) {
             let companySlug = match[1]
             let companyData = await this.getOrganizationData(companySlug)
+            if (!companyData) {
+                console.error('Cannot get company data for ', companySlug)
+                throw new Error(`Cannot get company data for ${companySlug}`)
+            }
             allCompanyData.push(companyData)
             const companyUrl = `https://www.linkedin.com/company/${companySlug}`;
             const companyName = companyData.localizedName
+
             const companyUrn = await this.getOrganizationURNFromData(companyData)
             const companyUrlRegex = new RegExp(companyUrl, 'g');
             // replace the company URL with the company name
-            post = post.replace(companyUrlRegex, `@[${companyName}](${companyUrn})`);
+            post = post.replace(companyUrlRegex, `@[${companyName}](${companyUrn}) `);
         }
 
         /*
