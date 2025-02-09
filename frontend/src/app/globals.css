@@ -1,5 +1,6 @@
 body {
   font-family: var(--font-geist-sans);
+  background-color: #e6f3ff;
 }
 
 #main {
@@ -134,3 +135,49 @@ dialog::backdrop {
   flex-direction: row;
   gap: 1rem;
 }
+
+.tabs {
+  margin: 20px 0px 0px 0px;
+  border-bottom: 1px solid #ccc;
+}
+
+.tabs button {
+  padding: 10px 20px;
+  margin-right: 10px;
+  border: 1px solid #ccc;
+  background: #f5f5f5;
+  color: #000;
+  cursor: pointer;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+}
+
+.tabs button.active {
+  background: #fff;
+  border-bottom: 1px solid white;
+  margin-bottom: -1px;
+}
+
+.tab-content {
+  padding: 20px 20px 20px 20px;
+  background-color: white;
+  border-radius: 0 0 8px 8px;
+  border: 1px solid #ccc;
+  border-top: none;
+}
+
+.instructions {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.instructions ol {
+  line-height: 1.6;
+}
+
+.footer {
+  margin-top: 20px;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
