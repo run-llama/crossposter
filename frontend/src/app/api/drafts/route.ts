@@ -47,10 +47,6 @@ Settings.llm = new Anthropic({
     model: "claude-3-5-sonnet-20240620",
     apiKey: process.env.ANTHROPIC_API_KEY,
 });
-let openaiLLM = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-    model: "gpt-4o-mini",
-});
 
 const twitterAgent = new ReActAgent({tools: [searchWeb]});
 const linkedInAgent = new ReActAgent({tools: [searchWeb]});

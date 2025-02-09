@@ -386,7 +386,7 @@ export default function Home() {
       </div>
 
       <div className="footer">
-        <p>Written by <a href="https://bsky.app/profile/seldo.com">Laurie Voss</a>.</p>
+        <p>Written by <a href="https://bsky.app/profile/seldo.com">Laurie Voss</a> using <a href="https://ts.llamaindex.ai/">LlamaIndex.TS</a>.</p>
         <p>CrossPoster is <a href="https://github.com/run-llama/crossposter">open source</a>! You are welcome to submit issues and pull requests via GitHub.</p>
         <p><a href="https://www.llamaindex.ai/files/privacy-notice.pdf">Privacy Policy</a> | <a href="https://www.llamaindex.ai/files/terms-of-service.pdf">Terms of Service</a></p>
 
