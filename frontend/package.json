@@ -10,7 +10,11 @@
   },
   "dependencies": {
     "@atproto/api": "^0.13.31",
+    "@mdx-js/loader": "^3.1.0",
+    "@mdx-js/react": "^3.1.0",
+    "@next/mdx": "^15.1.6",
     "@prisma/client": "^6.2.1",
+    "@types/mdx": "^2.0.13",
     "linkedin-post-share": "github:seldo/linkedin-post-share",
     "llamaindex": "^0.8.31",
     "next": "15.1.1",
