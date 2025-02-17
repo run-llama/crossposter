@@ -293,4 +293,77 @@ export default class LinkedinPostShare {
             console.error('Something went wrong. Error: ', e);
         }
     }
+// Method to create a post for an organization without an image
+async createPostForOrganization(
+    post: string,
+    organizationName: string
+  ): Promise<{ id: string } | undefined> {
+    const organizationUrn = await this.getOrganizationURN(organizationName);
+    if (!organizationUrn) {
+      console.error('Cannot get organization URN');
+      return;
+    }
+    return this.createPost(post, organizationUrn);
+  }
+  
+// Method to create a post without an image
+async createPost(
+    post: string,
+    organizationURN: string | null = null
+  ): Promise<{ id: string } | undefined> {
+    post = this.removeLinkedinReservedCharacters(post);
+  
+    let authorURN;
+    if (!organizationURN) {
+      authorURN = await this.getPersonURN();
+      if (!authorURN) {
+        console.error('Cannot get person URN');
+        return;
+      }
+    } else {
+      authorURN = organizationURN;
+    }
+  
+    try {
+      const postData = {
+        author: authorURN,
+        commentary: post,
+        visibility: 'PUBLIC',
+        distribution: {
+          feedDistribution: 'MAIN_FEED',
+          targetEntities: [],
+          thirdPartyDistributionChannels: [],
+        },
+        lifecycleState: 'PUBLISHED',
+        isReshareDisabledByAuthor: false,
+      };
+  
+      console.log("LinkedIn Post data", postData);
+  
+      const data = await axios(`${this.LINKEDIN_BASE_URL}/rest/posts`, {
+        method: 'POST',
+        headers: {
+          'LinkedIn-Version': this.LINKEDIN_VERSION,
+          Authorization: `Bearer ${this.accessToken}`,
+          'Content-Type': 'application/json',
+          'X-Restli-Protocol-Version': '2.0.0',
+        },
+        data: postData,
+      });
+  
+      if (data.status !== 201) {
+        console.error('Post not created. Status code: ', data.status);
+        return;
+      }
+      return {
+        id: data.headers['x-restli-id']
+      }
+    } catch (e) {
+      if (e instanceof AxiosError) {
+        console.error('Cannot create post. Error: ', e.response?.data);
+        return;
+      }
+      console.error('Something went wrong. Error: ', e);
+    }
+  }
 }

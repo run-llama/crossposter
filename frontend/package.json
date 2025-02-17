@@ -15,9 +15,10 @@
     "@next/mdx": "^15.1.6",
     "@prisma/client": "^6.2.1",
     "@types/mdx": "^2.0.13",
+    "dotenv": "^16.4.7",
     "linkedin-post-share": "github:seldo/linkedin-post-share",
     "llamaindex": "^0.8.31",
-    "next": "15.1.1",
+    "next": "^15.2.0-canary.61",
     "next-auth": "^4.24.11",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -29,7 +30,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "prisma": "^6.2.1",
+    "prisma": "^6.3.1",
     "typescript": "^5"
   }
 }
