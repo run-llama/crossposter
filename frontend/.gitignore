@@ -41,3 +41,5 @@ yarn-error.log*
 next-env.d.ts
 
 google_credentials.json
+mock.ts
+prisma/migrations/
