@@ -40,7 +40,7 @@ export default function Home() {
   const [linkedinPostResult, setLinkedinPostResult] = useState<LinkedInPostResponse | null>(null);
   const [blueskyPostResult, setBlueskyPostResult] = useState<BlueskyPostResponse | null>(null);
   const [activeTab, setActiveTab] = useState('app');
-  
+
   useEffect(() => {
     if (session) {
       const fetchUser = async () => {
@@ -61,29 +61,22 @@ export default function Home() {
       return;
     }
 
-    if (!file) {
-      setErrorMessage('Please upload an image before creating drafts.');
-      const dialog = document.querySelector('dialog');
-      dialog?.showModal();
-      return;
-    }
-
     const formData = new FormData();
     formData.append('text', draftText);
-    formData.append('file', file);
+    file ? formData.append('file', file) : null;
 
     try {
       // Create EventSource connection
       const eventSource = new EventSource('/api/drafts?' + new URLSearchParams({
         text: draftText,
-        ...(file && { fileName: file.name })
+        ...(file ? file && { fileName: file.name } : {}),
       }));
 
       // Handle incoming events
       setHandles(undefined)
       setEventsList(["Creating drafts..."]);
       setEditableDrafts({})
-    
+
       eventSource.onmessage = (event) => {
         const data = JSON.parse(event.data);
 
@@ -93,8 +86,8 @@ export default function Home() {
           setEditableDrafts(data.result);
           setHandles(data.handles);
           return
-        }       
-        
+        }
+
         // otherwise keep the running list of no more than 4 items
         setEventsList(prev => [...prev.slice(-3), data.msg].slice(-4));
 
@@ -179,11 +172,11 @@ export default function Home() {
 
     return (
       <>
-        <AuthButtons 
+        <AuthButtons
           user={user}
           setUser={setUser}
-          isBlueskyModalOpen={isBlueskyModalOpen} 
-          setIsBlueskyModalOpen={setIsBlueskyModalOpen} 
+          isBlueskyModalOpen={isBlueskyModalOpen}
+          setIsBlueskyModalOpen={setIsBlueskyModalOpen}
           dialogRef={dialogRef}
           linkedInOrgDialogRef={linkedInOrgDialogRef}
           selectedPlatform={selectedPlatform}
@@ -195,9 +188,9 @@ export default function Home() {
           <div className="container">
             <div className="enterText">
               <label htmlFor="text">Enter your draft post</label>
-              <textarea 
-                id="text" 
-                name="text" 
+              <textarea
+                id="text"
+                name="text"
                 value={draftText}
                 onChange={(e) => setDraftText(e.target.value)}
               />
@@ -279,7 +272,7 @@ export default function Home() {
                   await handlePost(platform, editableDrafts[platform]);
                 }}>
                   <div className="draftText">
-                    <textarea 
+                    <textarea
                       name="text"
                       value={editableDrafts[platform] || ''}
                       onChange={(e) => setEditableDrafts(prev => ({
@@ -365,16 +358,16 @@ export default function Home() {
           }}>Close</button>
         </div>
       </dialog>
-      
+
       <div className="tabs">
-        <button 
-          className={activeTab === 'app' ? 'active' : ''} 
+        <button
+          className={activeTab === 'app' ? 'active' : ''}
           onClick={() => setActiveTab('app')}
         >
           App
         </button>
-        <button 
-          className={activeTab === 'instructions' ? 'active' : ''} 
+        <button
+          className={activeTab === 'instructions' ? 'active' : ''}
           onClick={() => setActiveTab('instructions')}
         >
           Instructions
