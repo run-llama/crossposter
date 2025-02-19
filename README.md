@@ -1,5 +1,7 @@
 # CrossPoster
 
+You can try CrossPoster right now at [crossposter.llamaindex.ai](https://crossposter.llamaindex.ai)!
+
 CrossPoster is a tool for quickly posting to multiple social media platforms while adapting the content to each platform. It uses [LlamaIndex.TS](https://ts.llamaindex.ai/) to identify entities within each post and @-mention them appropriately on each platform, and also to shorten the text for platforms with character limits.
 
 It was designed as an internal tool for LlamaIndex and has been open-sourced because it's pretty nifty! But unless you have <b>exactly</b> our social media posting workflow you're probably going to have to do some work to adapt it. Why not contribute your changes back as PRs?
