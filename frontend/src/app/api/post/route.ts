@@ -8,12 +8,13 @@ import BlueSkyPoster from '@/util/blueSkyPoster';
 export async function POST(req: Request, res: Response) {
 
   const session = await getServerSession(authOptions)
-
+  
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
+
     const prisma = new PrismaClient();
 
     if (!session.user?.email) {
@@ -54,7 +55,8 @@ export async function POST(req: Request, res: Response) {
           accessToken: twitterToken.token,
           accessSecret: twitterToken.secret,
         } as any); // typescript thinks appKey and appSecret don't exist but they do
-    
+
+
         console.log("Twitter user", await twitterClient.v2.me())
     
         let twitterMediaBuffer;
@@ -71,9 +73,11 @@ export async function POST(req: Request, res: Response) {
     
         result = await twitterClient.v2.tweet({
           text: text,
-          media: { media_ids: mediaIds as [string] }  
+          // media: { media_ids: mediaIds as [string] } 
+          media: media ? { media_ids: mediaIds as [string] } : undefined
         });
         break;
+
       case "linkedin":
 
         const linkedInToken = user.linkedin_token
@@ -91,17 +95,21 @@ export async function POST(req: Request, res: Response) {
           linkedInMediaBuffer = Buffer.from(arrayBuffer);
         }
 
-        if (!linkedInMediaBuffer) {
-          return NextResponse.json({ error: 'LinkedIn media not found' }, { status: 400 });
-        }
-        
         const linkedinPostShare = new LinkedinPostShare(linkedInToken);
         if (user.linkedin_company) {
-          result = await linkedinPostShare.createPostWithImageForOrganization(post, linkedInMediaBuffer, user.linkedin_company, imageAlt);
-        } else {
-          result = await linkedinPostShare.createPostWithImage(post, linkedInMediaBuffer, imageAlt);
-        }
-        
+            if (linkedInMediaBuffer) {
+              result = await linkedinPostShare.createPostWithImageForOrganization(post, linkedInMediaBuffer, user.linkedin_company, imageAlt);
+            } else {
+              result = await linkedinPostShare.createPostForOrganization(post, user.linkedin_company);
+            }
+          } else { 
+            if (linkedInMediaBuffer) {
+              result = await linkedinPostShare.createPostWithImage(post, linkedInMediaBuffer, imageAlt);
+            } else {
+              result = await linkedinPostShare.createPost(post);
+            }
+          }
+
         if (result) {
           console.log("Post shared successfully!");
         } else {
@@ -109,6 +117,8 @@ export async function POST(req: Request, res: Response) {
         }
 
         break;
+      
+      
       case "bluesky":
 
         const blueSkyAuth = user.bluesky_token ? JSON.parse(user.bluesky_token) : null
@@ -124,12 +134,14 @@ export async function POST(req: Request, res: Response) {
         if (media) {
           const arrayBuffer = await media.arrayBuffer();
           blueSkyMediaBuffer = Buffer.from(arrayBuffer);
+        } 
+        
+        if (blueSkyMediaBuffer) {
+          result = await blueSkyPoster.post(text, blueSkyMediaBuffer);
         } else {
-          throw new Error("No media attached")
-        }       
-
-        result = await blueSkyPoster.post(text, blueSkyMediaBuffer)
-
+          result = await blueSkyPoster.post(text, null);
+        }
+      
         if (result) {
           console.log("Post shared successfully!");
         } else {
