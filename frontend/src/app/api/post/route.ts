@@ -5,7 +5,6 @@ import { TwitterApi } from 'twitter-api-v2';
 import { PrismaClient } from '@prisma/client';
 import LinkedinPostShare from '@/util/linkedinPostShare';
 import BlueSkyPoster from '@/util/blueSkyPoster';
-import { link } from 'fs';
 export async function POST(req: Request, res: Response) {
 
   const session = await getServerSession(authOptions)
@@ -95,10 +94,6 @@ export async function POST(req: Request, res: Response) {
           const arrayBuffer = await media.arrayBuffer();
           linkedInMediaBuffer = Buffer.from(arrayBuffer);
         }
-        // Below might have also been blocking a text-only post to go through
-        // if (!linkedInMediaBuffer) {
-        //   return NextResponse.json({ error: 'LinkedIn media not found' }, { status: 400 });
-        // }
 
         const linkedinPostShare = new LinkedinPostShare(linkedInToken);
         if (user.linkedin_company) {
@@ -140,12 +135,6 @@ export async function POST(req: Request, res: Response) {
           const arrayBuffer = await media.arrayBuffer();
           blueSkyMediaBuffer = Buffer.from(arrayBuffer);
         } 
-
-        // Below might have also been blocking a text-only post to go through
-        // else {
-        //   throw new Error("No media attached")
-        // }       
-        // result = await blueSkyPoster.post(text, blueSkyMediaBuffer)
         
         if (blueSkyMediaBuffer) {
           result = await blueSkyPoster.post(text, blueSkyMediaBuffer);

@@ -61,13 +61,6 @@ export default function Home() {
       return;
     }
 
-    if (!file) {
-      setErrorMessage('Please upload an image before creating drafts.');
-      const dialog = document.querySelector('dialog');
-      dialog?.showModal();
-      return;
-    }
-
     const formData = new FormData();
     formData.append('text', draftText);
     formData.append('file', file);
