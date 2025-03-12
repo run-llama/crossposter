@@ -327,17 +327,15 @@ export default function Home() {
             </ul>
           </li>
           <li>Enter your post text in the text area. Use regular English names for people and companies, CrossPoster is going to search the web for their social media handles for you.</li>
-          <li>Upload an image</li>
+          <li>Upload an image (optionally)</li>
           <li>Click "Create Drafts" to generate platform-specific versions</li>
           <li>Review and edit the generated drafts. In particular, check that the mentions go to the right places! Sometimes the web search turns up false positives.</li>
           <li>Post to each platform using the "Post to..." buttons</li>
         </ul>
         <h2>Limitations and Caveats</h2>
         <ul>
-          <li>Currently, the image is required for all posts. Sorry! We always post with images.</li>
-          <li>But only one image per post. Look, we're working on it.</li>
+          <li>You can only attach one image per post right now.</li>
           <li>Video attachments are not currently supported.</li>
-
         </ul>
       </div>
     );
