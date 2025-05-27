@@ -44,7 +44,7 @@ const sendResponse = (controller: ReadableStreamDefaultController, message: stri
 }
 
 Settings.llm = new Anthropic({
-    model: "claude-3-5-sonnet-20240620",
+    model: "claude-sonnet-4-20250514",
     apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
@@ -103,9 +103,9 @@ const getTwitterHandles = async (controller: ReadableStreamDefaultController, ex
         let handle = null;
         if (result !== "NOT FOUND") {
             if (result.includes("twitter.com/")) {
-                handle = "@" + result.split("twitter.com/")[1].split("?")[0];
+                handle = "@" + result.split("twitter.com/")[1].split("?")[0].split("/")[0];
             } else if (result.includes("x.com/")) {
-                handle = "@" + result.split("x.com/")[1].split("?")[0];
+                handle = "@" + result.split("x.com/")[1].split("?")[0].split("/")[0];
             }
             sendResponse(controller, `Found Twitter handle for ${entityValue}: ` + handle);
         }
@@ -322,7 +322,9 @@ export async function GET(request: Request) {
                 sendResponse(controller, "Generating entities...");
 
                 const response = await Settings.llm.complete({prompt:`
-                    Below is the text of a tweet. Extract from it a list of entities it might make sense to @-mention.
+                    Below is the text of a tweet. Extract from it a list of entities it might make sense to @-mention. Do not include LlamaIndex as one of the entities, we are 
+                    LlamaIndex.
+                    
                     <tweet>
                     ${text}
                     </tweet>
