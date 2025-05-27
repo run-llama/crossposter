@@ -341,6 +341,7 @@ export async function GET(request: Request) {
                     and including the @ symbol and the square brackets.
 
                     Return the JSON object ONLY, no preamble or explanation.
+                    Do NOT include any markdown formatting around the JSON.
 
                     JSON:
                 `})
