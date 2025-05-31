@@ -151,7 +151,7 @@ export async function POST(req: Request, res: Response) {
         } 
         
         if (blueSkyMediaBuffer) {
-          result = await blueSkyPoster.post(text, blueSkyMediaBuffer);
+          result = await blueSkyPoster.post(text, blueSkyMediaBuffer, media.name);
         } else {
           result = await blueSkyPoster.post(text, null);
         }

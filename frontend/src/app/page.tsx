@@ -78,9 +78,17 @@ export default function Home() {
       return;
     }
 
+    // Check for video file size > 4MB
+    if (file && file.type.startsWith('video/') && file.size > 4 * 1024 * 1024) {
+      setErrorMessage('Video files larger than 4MB are not supported.');
+      const dialog = document.querySelector('dialog');
+      dialog?.showModal();
+      return;
+    }
+
     const formData = new FormData();
     formData.append('text', draftText);
-    formData.append('file', file);
+    if (file) formData.append('file', file);
 
     try {
       // Create EventSource connection
