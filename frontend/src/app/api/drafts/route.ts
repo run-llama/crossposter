@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { Anthropic, OpenAI } from "llamaindex";
-import { FunctionTool, ReActAgent, AnthropicAgent, OpenAIAgent, Settings } from "llamaindex";
+import { FunctionTool, Settings } from "llamaindex";
+import { anthropic } from "@llamaindex/anthropic";
+import { agent } from "@llamaindex/workflow";
 import { getJson } from "serpapi";
 
 const searchWeb = FunctionTool.from(
@@ -43,14 +44,14 @@ const sendResponse = (controller: ReadableStreamDefaultController, message: stri
     controller.enqueue(`data: ${JSON.stringify({msg: message})}\n\n`);
 }
 
-Settings.llm = new Anthropic({
+const llm = anthropic({
     model: "claude-sonnet-4-20250514",
     apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-const twitterAgent = new ReActAgent({tools: [searchWeb]});
-const linkedInAgent = new ReActAgent({tools: [searchWeb]});
-const blueskyAgent = new ReActAgent({tools: [searchWeb]});
+const twitterAgent = agent({tools: [searchWeb], llm});
+const linkedInAgent = agent({tools: [searchWeb], llm});
+const blueskyAgent = agent({tools: [searchWeb], llm});
 
 const getTwitterHandles = async (controller: ReadableStreamDefaultController, extractedEntities: any) => {
     const twitterHandles: Record<string, string | null> = {};
@@ -62,33 +63,32 @@ const getTwitterHandles = async (controller: ReadableStreamDefaultController, ex
 
         let agentResponse = null;
         try {
-            agentResponse = await twitterAgent.chat({
-                message: `
+            agentResponse = await twitterAgent.run(`
                 Your goal is to find the Twitter account of the given entity. 
                 These days Twitter is also called X, so it might be "X account" or "Twitter account". Search the web for "${entityValue} twitter account". You'll get a list of results.
                 Pick the one that is most likely to be the Twitter/X account of the given entity.
                 Return the FULL URL ONLY. If none of the results seem to be the Twitter/X account of the given entity, return "NOT FOUND" only.
-            `
-            });
+                Do not include any preamble or explanation, just return the URL.
+            `);
 
-            console.log("Twitter Agent response: ", (agentResponse?.message?.content[0] as { text: string })?.text || "No response");
+            console.log("Twitter Agent response: ", agentResponse?.data?.result || "No response");
 
         } catch (error) {
             console.error(`Error running agent to find Twitter handle for ${entityValue}`, error);
             return [entityValue, null];
         }
 
-        if (!(agentResponse?.message?.content[0] as { text: string })?.text) {
+        if (!agentResponse?.data?.result) {
             return [entityValue, null];
         }
 
         let response = null;
         try {            
-            response = await Settings.llm.complete({
+            response = await llm.complete({
                 prompt: `
                     You're given the output of an agent running a search. It has either found a URL or not. If it found a URL, return that URL ONLY. If it didn't find a URL, return "NOT FOUND" only.
                     <agentresponse>
-                    ${(agentResponse?.message?.content[0] as { text: string }).text ?? "NOT FOUND"}
+                    ${agentResponse?.data?.result ?? "NOT FOUND"}
                     </agentresponse>
                 `
             });
@@ -131,33 +131,31 @@ const getLinkedInHandles = async (controller: ReadableStreamDefaultController, e
 
         let agentResponse = null;
         try {
-            agentResponse = await linkedInAgent.chat({
-                message: `
+            agentResponse = await linkedInAgent.run(`
                     Your goal is to find the LinkedIn account of the given entity. 
                     Search the web for "${entityValue} linkedin". You'll get a list of results.
                     Pick the one that is most likely to be the LinkedIn account of the given entity.
                     Return the URL of that LinkedIn account. Return the URL ONLY. If none of the results
                     seem to be the LinkedIn account of the given entity, return "NOT FOUND" only.
-                `
-            });
+                `);
         } catch (error) {
             console.error(`Error running agent to find LinkedIn handle for ${entityValue}`, error);
             console.error("Stack: ", (error as Error).stack);
         }
 
-        if (!(agentResponse?.message?.content[0] as { text: string })?.text) {
+        if (!agentResponse?.data?.result) {
             return [entityValue, null];
         }
 
-        console.log("LinkedIn Agent response: ", (agentResponse?.message?.content[0] as { text: string })?.text);
+        console.log("LinkedIn Agent response: ", agentResponse?.data?.result);
 
         let response = null;
         try {
-            response = await Settings.llm.complete({
+            response = await llm.complete({
                 prompt: `
                     You're given the output of an agent running a search. It has either found a URL or not. If it found a URL, return that URL ONLY. If it didn't find a URL, return "NOT FOUND" only.
                     <agentresponse>
-                    ${(agentResponse?.message?.content[0] as { text: string })?.text ?? "NOT FOUND"}
+                    ${agentResponse?.data?.result ?? "NOT FOUND"}
                     </agentresponse>
                 `
             });
@@ -232,27 +230,25 @@ const getBlueskyHandles = async (controller: ReadableStreamDefaultController, ex
         }
         sendResponse(controller, "Looking up Bluesky handle for " + entityValue);
 
-        const agentResponse = await blueskyAgent.chat({
-            message: `
+        const agentResponse = await blueskyAgent.run(`
                 Your goal is to find the Bluesky account of the given entity. 
                 Search the web for "${entityValue} bluesky". You'll get a list of results.
                 Pick the one that is most likely to be the Bluesky account of the given entity. Sometimes Bluesky accounts have ugly URLs like "did:plc:..." but if the title and description match, it might be the right one.
                 Return the URL of that Bluesky account. Return the URL ONLY. If none of the results
                 seem to be the Bluesky account of the given entity, return "NOT FOUND" only.
-            `
-        });
+            `);
 
-        if (!(agentResponse?.message?.content[0] as { text: string })?.text) {
+        if (!agentResponse?.data?.result) {
             return [entityValue, null];
         }
 
-        console.log("Bluesky Agent response: ", (agentResponse?.message?.content[0] as { text: string })?.text);
+        console.log("Bluesky Agent response: ", agentResponse?.data?.result);
 
-        const response = await Settings.llm.complete({
+        const response = await llm.complete({
             prompt: `
                 You're given the output of an agent running a search. It has either found a URL or not. If it found a URL, return that URL ONLY. If it didn't find a URL, return "NOT FOUND" only.
                 <agentresponse>
-                ${(agentResponse?.message?.content[0] as { text: string })?.text ?? "NOT FOUND"}
+                ${agentResponse?.data?.result ?? "NOT FOUND"}
                 </agentresponse>
             `
         });
@@ -314,6 +310,7 @@ export async function GET(request: Request) {
             );
         }
 
+        console.log("Text to process: ", text);
 
         // Create a ReadableStream to send the response as an SSE
         const stream = new ReadableStream({
@@ -321,7 +318,7 @@ export async function GET(request: Request) {
 
                 sendResponse(controller, "Generating entities...");
 
-                const response = await Settings.llm.complete({prompt:`
+                const response = await llm.complete({prompt:`
                     Below is the text of a tweet. Extract from it a list of entities it might make sense to @-mention. Do not include LlamaIndex as one of the entities, we are 
                     LlamaIndex.
                     

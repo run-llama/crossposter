@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@atproto/api": "^0.13.31",
+    "@llamaindex/anthropic": "^0.3.11",
+    "@llamaindex/workflow": "^1.1.4",
     "@mdx-js/loader": "^3.1.0",
     "@mdx-js/react": "^3.1.0",
     "@next/mdx": "^15.1.6",
@@ -17,7 +19,7 @@
     "@types/mdx": "^2.0.13",
     "dotenv": "^16.4.7",
     "linkedin-post-share": "github:seldo/linkedin-post-share",
-    "llamaindex": "^0.8.31",
+    "llamaindex": "^0.11.5",
     "next": "^15.2.0-canary.61",
     "next-auth": "^4.24.11",
     "react": "^19.0.0",
