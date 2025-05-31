@@ -40,6 +40,8 @@ export default function Home() {
   const [linkedinPostResult, setLinkedinPostResult] = useState<LinkedInPostResponse | null>(null);
   const [blueskyPostResult, setBlueskyPostResult] = useState<BlueskyPostResponse | null>(null);
   const [activeTab, setActiveTab] = useState('app');
+  const [isDrafting, setIsDrafting] = useState(false);
+  const [isPosting, setIsPosting] = useState<{ [platform: string]: boolean }>({});
   
   // Memoize object URL for video preview
   const videoUrl = useMemo(() => {
@@ -92,6 +94,7 @@ export default function Home() {
 
     try {
       // Create EventSource connection
+      setIsDrafting(true);
       const eventSource = new EventSource('/api/drafts?' + new URLSearchParams({
         text: draftText,
         ...(file && { fileName: file.name })
@@ -110,6 +113,7 @@ export default function Home() {
           eventSource.close();
           setEditableDrafts(data.result);
           setHandles(data.handles);
+          setIsDrafting(false);
           return
         }       
         
@@ -122,9 +126,11 @@ export default function Home() {
       eventSource.onerror = (error) => {
         console.error('EventSource error:', error);
         eventSource.close();
+        setIsDrafting(false);
       };
     } catch (error) {
       console.error('Error:', error);
+      setIsDrafting(false);
     }
   };
 
@@ -132,6 +138,7 @@ export default function Home() {
     console.log("File is", file)
 
     try {
+      setIsPosting(prev => ({ ...prev, [platform]: true }));
       const formData = new FormData();
       formData.append('text', draft);
       formData.append('platform', platform);
@@ -144,6 +151,7 @@ export default function Home() {
         body: formData
       });
       if (!response.ok) {
+        setIsPosting(prev => ({ ...prev, [platform]: false }));
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       console.log(`Successfully posted to ${platform}`);
@@ -158,12 +166,14 @@ export default function Home() {
           setBlueskyPostResult(await response.json());
           break;
       }
+      setIsPosting(prev => ({ ...prev, [platform]: false }));
 
     } catch (error) {
       console.error(`Error posting to ${platform}:`, error);
       setErrorMessage(`Error posting to ${platform}: ${error}`);
       const dialog = document.querySelector('dialog');
       dialog?.showModal();
+      setIsPosting(prev => ({ ...prev, [platform]: false }));
     }
   };
 
@@ -309,6 +319,27 @@ export default function Home() {
             <button onClick={handleSubmit}>
               Create Drafts
             </button>
+            {isDrafting && (
+              <span className="spinner" style={{ marginLeft: '10px', verticalAlign: 'middle' }}>
+                <style>{`
+                  .spinner:after {
+                    content: '';
+                    display: inline-block;
+                    width: 16px;
+                    height: 16px;
+                    border: 2px solid #ccc;
+                    border-top: 2px solid #333;
+                    border-radius: 50%;
+                    animation: spin 0.8s linear infinite;
+                    vertical-align: middle;
+                  }
+                  @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                  }
+                `}</style>
+              </span>
+            )}
           </div>
         </div>
         <div className="drafts">
@@ -373,6 +404,27 @@ export default function Home() {
                       }))}
                     />
                     <button type="submit">Post to {providerNames[platform as keyof typeof providerNames]}</button>
+                    {isPosting[platform] && (
+                      <span className="spinner" style={{ marginLeft: '10px', verticalAlign: 'middle' }}>
+                        <style>{`
+                          .spinner:after {
+                            content: '';
+                            display: inline-block;
+                            width: 16px;
+                            height: 16px;
+                            border: 2px solid #ccc;
+                            border-top: 2px solid #333;
+                            border-radius: 50%;
+                            animation: spin 0.8s linear infinite;
+                            vertical-align: middle;
+                          }
+                          @keyframes spin {
+                            0% { transform: rotate(0deg); }
+                            100% { transform: rotate(360deg); }
+                          }
+                        `}</style>
+                      </span>
+                    )}
                     {platform === "twitter" && twitterPostResult && (
                       <div>
                         <h4>Posted!</h4>
