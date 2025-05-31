@@ -49,6 +49,5 @@ Want to contribute? There are so many ways this could be better!
 
 * Mastodon support (please!)
 * Threads support
-* Generate links to mentioned entities, maybe with previews, so it's easy to check you got the right ones
 * Make the UI prettier
 * Schedule posts and show them in a calendar (very large)
