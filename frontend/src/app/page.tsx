@@ -211,7 +211,7 @@ export default function Home() {
                   e.preventDefault();
                   e.currentTarget.classList.remove('dragover');
                   const newFile = e.dataTransfer.files[0];
-                  if (newFile.type.startsWith('image/')) {
+                  if (newFile && newFile.type.startsWith('image/')) {
                     setFile(newFile);
                     const reader = new FileReader();
                     reader.onload = (e) => {
@@ -226,8 +226,38 @@ export default function Home() {
                     reader.readAsDataURL(newFile);
                   }
                 }}
+                onClick={() => {
+                  const fileInput = document.getElementById('mediaFileInput');
+                  if (fileInput) {
+                    fileInput.click();
+                  }
+                }}
+                style={{ cursor: 'pointer' }}
               >
-                {!file && 'Drop file here'}
+                {!file && 'Drag file here or click to select'}
+                <input
+                  id="mediaFileInput"
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const newFile = e.target.files && e.target.files[0];
+                    if (newFile && newFile.type.startsWith('image/')) {
+                      setFile(newFile);
+                      const reader = new FileReader();
+                      reader.onload = (e) => {
+                        const dropZone = document.getElementById('media');
+                        if (dropZone) {
+                          dropZone.style.backgroundImage = `url(${e.target?.result})`;
+                          dropZone.style.backgroundSize = 'contain';
+                          dropZone.style.backgroundPosition = 'center';
+                          dropZone.style.backgroundRepeat = 'no-repeat';
+                        }
+                      };
+                      reader.readAsDataURL(newFile);
+                    }
+                  }}
+                />
               </div>
             </div>
           </div>

@@ -47,7 +47,6 @@ Because it connects to so many different APIs, there are a lot of environment va
 
 Want to contribute? There are so many ways this could be better!
 
-* Click media upload box to open a file selection dialog (probably a one-liner)
 * Allow video uploads (I'm actually not sure why this doesn't already work)
 * Mastodon support (please!)
 * Threads support
