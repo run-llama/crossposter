@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import { AuthButtons } from '@/components/AuthButtons'
 import providerNames from '@/util/platformNames'
@@ -41,6 +41,23 @@ export default function Home() {
   const [blueskyPostResult, setBlueskyPostResult] = useState<BlueskyPostResponse | null>(null);
   const [activeTab, setActiveTab] = useState('app');
   
+  // Memoize object URL for video preview
+  const videoUrl = useMemo(() => {
+    if (file && file.type.startsWith('video/')) {
+      return URL.createObjectURL(file);
+    }
+    return null;
+  }, [file]);
+
+  useEffect(() => {
+    // Clean up the object URL when file changes or component unmounts
+    return () => {
+      if (videoUrl) {
+        URL.revokeObjectURL(videoUrl);
+      }
+    };
+  }, [videoUrl]);
+
   useEffect(() => {
     if (session) {
       const fetchUser = async () => {
@@ -211,19 +228,23 @@ export default function Home() {
                   e.preventDefault();
                   e.currentTarget.classList.remove('dragover');
                   const newFile = e.dataTransfer.files[0];
-                  if (newFile && newFile.type.startsWith('image/')) {
+                  if (newFile && (newFile.type.startsWith('image/') || newFile.type.startsWith('video/'))) {
                     setFile(newFile);
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                      const dropZone = document.getElementById('media');
-                      if (dropZone) {
-                        dropZone.style.backgroundImage = `url(${e.target?.result})`;
-                        dropZone.style.backgroundSize = 'contain';
-                        dropZone.style.backgroundPosition = 'center';
-                        dropZone.style.backgroundRepeat = 'no-repeat';
+                    const dropZone = document.getElementById('media');
+                    if (dropZone) {
+                      if (newFile.type.startsWith('image/')) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                          dropZone.style.backgroundImage = `url(${e.target?.result})`;
+                          dropZone.style.backgroundSize = 'contain';
+                          dropZone.style.backgroundPosition = 'center';
+                          dropZone.style.backgroundRepeat = 'no-repeat';
+                        };
+                        reader.readAsDataURL(newFile);
+                      } else if (newFile.type.startsWith('video/')) {
+                        dropZone.style.backgroundImage = '';
                       }
-                    };
-                    reader.readAsDataURL(newFile);
+                    }
                   }
                 }}
                 onClick={() => {
@@ -235,29 +256,44 @@ export default function Home() {
                 style={{ cursor: 'pointer' }}
               >
                 {!file && 'Drag file here or click to select'}
+                {file && file.type.startsWith('video/') && (
+                  <video
+                    src={videoUrl || undefined}
+                    controls
+                    style={{ maxWidth: '100%', maxHeight: '100%' }}
+                  />
+                )}
                 <input
                   id="mediaFileInput"
                   type="file"
-                  accept="image/*"
+                  accept="image/*,video/*"
                   style={{ display: 'none' }}
                   onChange={(e) => {
                     const newFile = e.target.files && e.target.files[0];
-                    if (newFile && newFile.type.startsWith('image/')) {
+                    if (newFile && (newFile.type.startsWith('image/') || newFile.type.startsWith('video/'))) {
                       setFile(newFile);
-                      const reader = new FileReader();
-                      reader.onload = (e) => {
-                        const dropZone = document.getElementById('media');
-                        if (dropZone) {
-                          dropZone.style.backgroundImage = `url(${e.target?.result})`;
-                          dropZone.style.backgroundSize = 'contain';
-                          dropZone.style.backgroundPosition = 'center';
-                          dropZone.style.backgroundRepeat = 'no-repeat';
+                      const dropZone = document.getElementById('media');
+                      if (dropZone) {
+                        if (newFile.type.startsWith('image/')) {
+                          const reader = new FileReader();
+                          reader.onload = (e) => {
+                            dropZone.style.backgroundImage = `url(${e.target?.result})`;
+                            dropZone.style.backgroundSize = 'contain';
+                            dropZone.style.backgroundPosition = 'center';
+                            dropZone.style.backgroundRepeat = 'no-repeat';
+                          };
+                          reader.readAsDataURL(newFile);
+                        } else if (newFile.type.startsWith('video/')) {
+                          dropZone.style.backgroundImage = '';
                         }
-                      };
-                      reader.readAsDataURL(newFile);
+                      }
                     }
                   }}
                 />
+                {file && file.type.startsWith('image/') && (
+                  // No need to show a separate preview, background image is set
+                  null
+                )}
               </div>
             </div>
           </div>

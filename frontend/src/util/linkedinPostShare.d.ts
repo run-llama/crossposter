@@ -44,3 +44,11 @@ export interface Profile {
       image: string;
     };
   };
+
+  export type VideoUpload = {
+    value: {
+      uploadUrlExpiresAt: number;
+      uploadUrl: string;
+      video: string; // The video URN
+    };
+  };

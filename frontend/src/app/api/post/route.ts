@@ -64,9 +64,23 @@ export async function POST(req: Request, res: Response) {
         if (media) {
           const arrayBuffer = await media.arrayBuffer();
           twitterMediaBuffer = Buffer.from(arrayBuffer);
-    
-          console.log("About to call upload media")
-          mediaIds.push(await twitterClient.v1.uploadMedia(twitterMediaBuffer, { mimeType: 'image/png', target: 'tweet' }))
+
+          // Detect media type
+          const mimeType = media.type || 'application/octet-stream';
+          let uploadOptions: any = { mimeType, target: 'tweet' };
+
+          // Twitter API: if video, set correct mimeType and options
+          if (mimeType.startsWith('video/')) {
+            // For most browsers, .type will be e.g. 'video/mp4', which is correct
+            // Optionally, you could add media_category: 'tweet_video' if needed
+            uploadOptions = { ...uploadOptions, media_category: 'tweet_video' };
+          } else if (mimeType.startsWith('image/')) {
+            // For images, use the default options (already set)
+            uploadOptions = { ...uploadOptions, media_category: 'tweet_image' };
+          }
+
+          console.log('About to call upload media with options', uploadOptions);
+          mediaIds.push(await twitterClient.v1.uploadMedia(twitterMediaBuffer, uploadOptions));
         }
     
         console.log("Media IDs", mediaIds)
@@ -87,7 +101,7 @@ export async function POST(req: Request, res: Response) {
         }
         
         const post = text;
-        let imageAlt;
+        let mediaAlt;
 
         let linkedInMediaBuffer;
         if (media) {
@@ -98,13 +112,13 @@ export async function POST(req: Request, res: Response) {
         const linkedinPostShare = new LinkedinPostShare(linkedInToken);
         if (user.linkedin_company) {
             if (linkedInMediaBuffer) {
-              result = await linkedinPostShare.createPostWithImageForOrganization(post, linkedInMediaBuffer, user.linkedin_company, imageAlt);
+              result = await linkedinPostShare.createPostWithMediaForOrganization(post, linkedInMediaBuffer, user.linkedin_company, mediaAlt, media.name);
             } else {
               result = await linkedinPostShare.createPostForOrganization(post, user.linkedin_company);
             }
           } else { 
             if (linkedInMediaBuffer) {
-              result = await linkedinPostShare.createPostWithImage(post, linkedInMediaBuffer, imageAlt);
+              result = await linkedinPostShare.createPostWithMedia(post, linkedInMediaBuffer, mediaAlt, null, media.name);
             } else {
               result = await linkedinPostShare.createPost(post);
             }

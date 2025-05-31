@@ -3,7 +3,7 @@
 import axios, { AxiosError } from 'axios';
 
 // Types
-import type { Profile, ImageUpload } from './linkedinPostShare.d';
+import type { Profile, ImageUpload, VideoUpload } from './linkedinPostShare.d';
 
 export default class LinkedinPostShare {
     private LINKEDIN_BASE_URL = 'https://api.linkedin.com';
@@ -155,27 +155,168 @@ export default class LinkedinPostShare {
         return text.replace(/[|{}@\[\]()<>\\*_~+]/gm, '');
     }
 
-    async createPostWithImageForOrganization(
+    /**
+     * Detects the media type based on the buffer signature (magic number) or optional filename/extension.
+     * Returns 'image' or 'video'.
+     */
+    private detectMediaType(media: Buffer, filename?: string): 'image' | 'video' {
+        // Check by file extension if provided
+        if (filename) {
+            const ext = filename.split('.').pop()?.toLowerCase();
+            if (['mp4', 'mov', 'avi', 'webm', 'mkv'].includes(ext || '')) {
+                return 'video';
+            }
+            if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext || '')) {
+                return 'image';
+            }
+        }
+        // Fallback: check magic numbers for MP4 (video) and common images
+        if (media.slice(4, 8).toString() === 'ftyp') {
+            return 'video';
+        }
+        // JPEG: starts with 0xFFD8, PNG: 0x89504E47, GIF: 0x47494638
+        const sig = media.slice(0, 4).toString('hex');
+        if (sig === 'ffd8ffe0' || sig === 'ffd8ffe1' || sig === 'ffd8ffe2' || sig === '89504e47' || sig === '47494638') {
+            return 'image';
+        }
+        // Default to image
+        return 'image';
+    }
+
+    /**
+     * Generalized media upload request for both images and videos.
+     * Returns { type: 'image' | 'video', data: ImageUpload | VideoUpload }
+     */
+    private async createMediaUploadRequest(ownerUrn: string, media: Buffer, filename?: string): Promise<{ type: 'image', data: ImageUpload } | { type: 'video', data: VideoUpload } | undefined> {
+        const mediaType = this.detectMediaType(media, filename);
+        if (mediaType === 'image') {
+            const imageUploadRequest = await this.createImageUploadRequest(ownerUrn);
+            if (!imageUploadRequest) return;
+            return { type: 'image', data: imageUploadRequest };
+        } else {
+            // Video upload request
+            try {
+                const videoUploadRequest = await axios<VideoUpload>(
+                    `${this.LINKEDIN_BASE_URL}/rest/videos?action=initializeUpload`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'LinkedIn-Version': this.LINKEDIN_VERSION,
+                            Authorization: `Bearer ${this.accessToken}`,
+                            'X-Restli-Protocol-Version': '2.0.0',
+                        },
+                        data: {
+                            initializeUploadRequest: {
+                                owner: ownerUrn,
+                                fileSizeBytes: media.length,
+                                uploadCaptions: false,
+                                uploadThumbnail: false,
+                            },
+                        },
+                    },
+                );
+                console.log('Video upload initialize response:', videoUploadRequest.data);
+                return { type: 'video', data: videoUploadRequest.data };
+            } catch (e) {
+                if (e instanceof AxiosError) {
+                    console.error('Cannot create video upload request. Error: ', e.response?.data);
+                    console.log(e.response?.data?.errorDetails?.inputErrors)
+                    return;
+                }
+                console.error('Something went wrong. Error: ', e);
+            }
+        }
+    }
+
+    /**
+     * Uploads a video to LinkedIn using the provided upload URL, then finalizes the upload.
+     */
+    private async uploadVideo(video: Buffer, videoId: string, uploadUrl: string): Promise<boolean | undefined> {
+        console.log("Uploading video to", uploadUrl)
+        let etag: string | undefined;
+        try {
+            const videoUploadRequest = await axios(uploadUrl, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/octet-stream',
+                    Authorization: `Bearer ${this.accessToken}`,
+                },
+                data: video,
+            });
+            // LinkedIn may return 201 or 200 for video upload
+            if (![200, 201].includes(videoUploadRequest.status)) {
+                console.error('Video not uploaded. Status code: ', videoUploadRequest.status);
+                return false;
+            }
+            // ETag is required for finalizeUpload
+            etag = videoUploadRequest.headers['etag'] || videoUploadRequest.headers['ETag'];
+            if (!etag) {
+                console.error('No ETag found in video upload response headers.');
+                return false;
+            }
+        } catch (e) {
+            if (e instanceof AxiosError) {
+                console.error('Cannot upload video. Error: ', e.cause);
+                return;
+            }
+            console.error('Something went wrong. Error: ', e);
+            return;
+        }
+        // Finalize upload
+        try {
+            const finalizeRes = await axios(`${this.LINKEDIN_BASE_URL}/rest/videos?action=finalizeUpload`, {
+                method: 'POST',
+                headers: {
+                    'LinkedIn-Version': this.LINKEDIN_VERSION,
+                    Authorization: `Bearer ${this.accessToken}`,
+                    'Content-Type': 'application/json',
+                    'X-Restli-Protocol-Version': '2.0.0',
+                },
+                data: {
+                    finalizeUploadRequest: {
+                        video: videoId,
+                        uploadToken: '',
+                        uploadedPartIds: [etag],
+                    },
+                },
+            });
+            if (![200, 201, 204].includes(finalizeRes.status)) {
+                console.error('Video finalizeUpload failed. Status code: ', finalizeRes.status);
+                return false;
+            }
+            return true;
+        } catch (e) {
+            if (e instanceof AxiosError) {
+                console.error('Cannot finalize video upload. Error: ', e.response?.data);
+                return;
+            }
+            console.error('Something went wrong during finalizeUpload. Error: ', e);
+            return;
+        }
+    }
+
+    async createPostWithMediaForOrganization(
         post: string,
-        image: Buffer,
+        media: Buffer,
         organizationName: string,
-        imageAlt?: string
+        mediaAlt?: string,
+        filename?: string
     ): Promise<{ id: string } | undefined> {
         const organizationUrn = await this.getOrganizationURN(organizationName);
         if (!organizationUrn) {
             console.error('Cannot get organization URN');
             return;
         }
-        return this.createPostWithImage(post, image, imageAlt, organizationUrn);
+        return this.createPostWithMedia(post, media, mediaAlt, organizationUrn, filename);
     }
 
-    async createPostWithImage(
+    async createPostWithMedia(
         post: string,
-        image: Buffer,
-        imageAlt?: string,
-        organizationURN: string | null = null
+        media: Buffer,
+        mediaAlt?: string,
+        organizationURN: string | null = null,
+        filename?: string
     ): Promise<{ id: string } | undefined> {
-
         post = this.removeLinkedinReservedCharacters(post);
 
         // Extract company names from LinkedIn URLs
@@ -231,19 +372,26 @@ export default class LinkedinPostShare {
             authorURN = organizationURN;
         }
 
-        const imageUploadRequest = await this.createImageUploadRequest(authorURN);
-        if (!imageUploadRequest) {
-            console.error('Cannot create image upload request');
+        // Use the new generalized media upload request
+        const mediaUploadRequest = await this.createMediaUploadRequest(authorURN, media, filename);
+        if (!mediaUploadRequest) {
+            console.error('Cannot create media upload request');
             return;
         }
-
-        const uploadedImageData = await this.uploadImage(image, imageUploadRequest.value.uploadUrl);
-        if (!uploadedImageData) {
-            console.error('Cannot upload the image');
+        let mediaId;
+        let uploadSuccess = false;
+        if (mediaUploadRequest.type === 'image') {
+            uploadSuccess = await this.uploadImage(media, mediaUploadRequest.data.value.uploadUrl) ?? false;
+            mediaId = mediaUploadRequest.data.value.image;
+        } else if (mediaUploadRequest.type === 'video') {
+            console.log("Media upload request", mediaUploadRequest.data.value)
+            uploadSuccess = await this.uploadVideo(media, mediaUploadRequest.data.value.video, mediaUploadRequest.data.value.uploadInstructions[0].uploadUrl) ?? false;
+            mediaId = mediaUploadRequest.data.value.video;
+        }
+        if (!uploadSuccess) {
+            console.error('Cannot upload the media');
             return;
         }
-
-        const imageId = imageUploadRequest.value.image;
 
         try {
             const postData = {
@@ -257,8 +405,8 @@ export default class LinkedinPostShare {
                 },
                 content: {
                     media: {
-                        title: imageAlt ?? 'Cover image of the post',
-                        id: imageId,
+                        title: mediaAlt ?? (mediaUploadRequest.type === 'image' ? 'Cover image of the post' : 'Video of the post'),
+                        id: mediaId,
                     }
                 },
                 lifecycleState: 'PUBLISHED',
@@ -279,7 +427,7 @@ export default class LinkedinPostShare {
             });
 
             if (data.status !== 201) {
-                console.error('Image not created. Status code: ', data.status);
+                console.error('Post not created. Status code: ', data.status);
                 return;
             }
             return {
