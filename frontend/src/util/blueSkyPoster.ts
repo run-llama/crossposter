@@ -61,6 +61,7 @@ export default class BlueSkyPoster {
     /**
      * Uploads a video to Bluesky using the new job-based endpoint.
      * Returns the blob ref for use in the post embed.
+     * This is all from https://gist.github.com/mozzius/5cbbd15e12cdc0cb1d0d992b7c3b1d0f
      */
     private async uploadVideoWithJob(media: Buffer, mediaName: string | null): Promise<BlobRef> {
         if (!this.agent.session) {
