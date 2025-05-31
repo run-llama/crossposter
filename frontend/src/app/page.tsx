@@ -313,17 +313,35 @@ export default function Home() {
         </div>
         <div className="drafts">
           <div id="draftingEvents">
-            {handles ? (
+            {handles && Object.keys(handles['twitter']).length > 0 ? (
               <div id="foundHandles">
                 <h2>Entities were translated to these handles:</h2>
+                <p>We recommend checking these links to make sure they're correct.</p>
                 <div className="platforms">
                 {Object.keys(handles).map(
                   (platform) => (
                     <div className="platform" key={platform}>
                       <h3>{providerNames[platform as keyof typeof providerNames]}</h3>
-                      {Object.keys(handles[platform]).map((handle) => (
-                        <div key={platform + "_" + handle}>{handle}: {handles[platform][handle]}</div>
-                      ))}
+                      {Object.keys(handles[platform]).map((handle) => {
+                        const value = handles[platform][handle];
+                        let url = null;
+                        if (platform === 'twitter' && value && value.startsWith('@')) {
+                          url = `https://x.com/${value.substring(1)}`;
+                        } else if (platform === 'linkedin' && value) {
+                          url = value;
+                        } else if (platform === 'bluesky' && value) {
+                          url = value.startsWith('http') ? value : `https://bsky.app/profile/${value.replace(/^@/, '')}`;
+                        }
+                        return (
+                          <div key={platform + "_" + handle}>
+                            {handle}: {url ? (
+                              <a href={url} target="_blank" rel="noopener noreferrer">{value}</a>
+                            ) : (
+                              value
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )
                 )}
@@ -401,7 +419,7 @@ export default function Home() {
             </ul>
           </li>
           <li>Enter your post text in the text area. Use regular English names for people and companies, CrossPoster is going to search the web for their social media handles for you.</li>
-          <li>Upload an image (optionally)</li>
+          <li>Upload an image or a video to attach to your post (optional). Videos must be less than 4MB (LinkedIn's limit) and 3 minutes long (Bluesky's limit).</li>
           <li>Click "Create Drafts" to generate platform-specific versions</li>
           <li>Review and edit the generated drafts. In particular, check that the mentions go to the right places! Sometimes the web search turns up false positives.</li>
           <li>Post to each platform using the "Post to..." buttons</li>
