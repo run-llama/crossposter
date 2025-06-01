@@ -5,6 +5,7 @@ import { FunctionTool, Settings } from "llamaindex";
 import { anthropic } from "@llamaindex/anthropic";
 import { agent } from "@llamaindex/workflow";
 import { getJson } from "serpapi";
+import { PrismaClient } from '@prisma/client'
 
 const searchWeb = FunctionTool.from(
   async ({ query }: { query: string }) => {
@@ -310,7 +311,50 @@ export async function GET(request: Request) {
             );
         }
 
-        console.log("Text to process: ", text);
+        const prisma = new PrismaClient();
+
+        const user = await prisma.users.findUnique({
+          where: { email: session.user?.email ?? undefined }
+        });
+
+        // UTM rules logic: parse utm_rules, update URLs in text
+        let modifiedText = text;
+        if (user && user.utm_rules) {
+          let utmRulesObj: { domains: any[] } = { domains: [] };
+          if (typeof user.utm_rules === 'string') {
+            try {
+              const parsed = JSON.parse(user.utm_rules);
+              if (parsed && typeof parsed === 'object' && Array.isArray(parsed.domains)) {
+                utmRulesObj = parsed;
+              }
+            } catch (e) {
+              // fallback to empty
+            }
+          } else if (typeof user.utm_rules === 'object' && user.utm_rules !== null && Array.isArray((user.utm_rules as any).domains)) {
+            utmRulesObj = user.utm_rules as { domains: any[] };
+          }
+          for (const rule of utmRulesObj.domains) {
+            if (!rule.domain) continue;
+            // Regex to find URLs containing the domain
+            const urlRegex = new RegExp(`https?:\\/\\/[^\\s]*${rule.domain}[^\\s]*`, 'g');
+            modifiedText = modifiedText.replace(urlRegex, (match) => {
+              try {
+                console.log("Match: ", match);
+                const urlObj = new URL(match);
+                // Set/overwrite UTM params
+                if (rule.source) urlObj.searchParams.set('utm_source', rule.source);
+                if (rule.medium) urlObj.searchParams.set('utm_medium', rule.medium);
+                if (rule.campaign) urlObj.searchParams.set('utm_campaign', rule.campaign);
+                return urlObj.toString();
+              } catch (e) {
+                // If URL parsing fails, return original
+                return match;
+              }
+            });
+          }
+        }
+
+        console.log("Text to draft: ", modifiedText);
 
         // Create a ReadableStream to send the response as an SSE
         const stream = new ReadableStream({
@@ -323,7 +367,7 @@ export async function GET(request: Request) {
                     LlamaIndex.
                     
                     <tweet>
-                    ${text}
+                    ${modifiedText}
                     </tweet>
 
                     Return a JSON object with the following structure:
@@ -370,7 +414,7 @@ export async function GET(request: Request) {
                 for (const platform in handles) {
                     console.log("Platform: ", platform);
                     console.log("Handles: ", handles[platform]);
-                    let platformDraft = draft
+                    let platformDraft = draft;
                     for (const entityLabel of Object.keys(extractedEntities)) {
                         const entityName = extractedEntities[entityLabel];
                         if (handles[platform][entityName]) {
@@ -379,7 +423,7 @@ export async function GET(request: Request) {
                             platformDraft = platformDraft.replaceAll(`@[${entityLabel}]`, entityName);
                         }
                     }
-                    drafts[platform] = platformDraft
+                    drafts[platform] = platformDraft;
                 }
 
                 // bluesky needs to be rephrased if it's over 300 characters
@@ -395,7 +439,7 @@ export async function GET(request: Request) {
                             Do NOT include any preamble or explanation, just return the rephrased text.
                         `
                     });
-                    drafts.bluesky = response.text
+                    drafts.bluesky = response.text;
                 }
 
                 controller.enqueue(`data: ${JSON.stringify({
@@ -416,7 +460,6 @@ export async function GET(request: Request) {
                 'Connection': 'keep-alive',
             },
         });
-
     } catch (error) {
         console.error('Error processing draft:', error);
         return NextResponse.json(

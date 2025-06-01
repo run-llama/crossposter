@@ -57,6 +57,7 @@ export default function Home() {
   });
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [editingRow, setEditingRow] = useState<DomainRule | null>(null);
+  const [utmPreview, setUtmPreview] = useState('');
   
   // Memoize object URL for video preview
   const videoUrl = useMemo(() => {
@@ -86,6 +87,32 @@ export default function Home() {
       fetchUser();
     }
   }, [session]);
+
+  useEffect(() => {
+    if (!user || !user['utm_rules']) {
+      setUtmPreview('');
+      return;
+    }
+    let utmRulesObj: { domains: DomainRule[] } = { domains: [] };
+    try {
+      utmRulesObj = JSON.parse(user['utm_rules']);
+    } catch (e) {
+      utmRulesObj = { domains: [] };
+    }
+    const matches: string[] = [];
+    utmRulesObj.domains.forEach(rule => {
+      if (
+        rule.domain &&
+        draftText &&
+        draftText.toLowerCase().includes(rule.domain.toLowerCase())
+      ) {
+        matches.push(
+          `The following UTM parameters will be automatically attached to ${rule.domain}: source '${rule.source}', medium: '${rule.medium}', campaign: '${rule.campaign}'.`
+        );
+      }
+    });
+    setUtmPreview(matches.join(' '));
+  }, [draftText, user]);
 
   const handleSubmit = async () => {
     if (!draftText) {
@@ -330,6 +357,11 @@ export default function Home() {
               </div>
             </div>
           </div>
+          {utmPreview && (
+              <div style={{ margin: '1em 0', color: '#555', fontStyle: 'italic', fontSize: '0.8em' }}>
+                {utmPreview} See UTM rules tab to adjust.
+              </div>
+            )}
           <div className="createDraftButton">
             <button onClick={handleSubmit}>
               Create Drafts
