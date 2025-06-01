@@ -227,7 +227,7 @@ export default function Home() {
     if (!session) {
       return (
         <div className="login-container">
-          <p>CrossPoster is a tool for quickly posting to multiple social media platforms while adapting the content to each platform.</p>
+          <p>CrossPoster is a tool for quickly posting to multiple social media platforms while adapting the content to each platform. In particular, it will correctly @-mention people and companies you mention, which is a pain to do manually.</p>
           <h2>Features</h2>
           <ul>
             <li>Post to Twitter (X), LinkedIn, and Bluesky
@@ -235,9 +235,10 @@ export default function Home() {
                 <li>LinkedIn posts can be posted to a company page or an individual profile</li>
               </ul>
             </li>
-            <li>Attach images to all posts</li>
+            <li>Attach images or videos to posts</li>
             <li>Entities (people, companies, etc.) mentioned in your draft will be identified and appropriately @-mentioned on each platform (if accounts exist)</li>
             <li>Supports long content for Twitter and LinkedIn; automatically shortens long posts for BlueSky.</li>
+            <li>Optionally automatically add UTM parameters to links to your own domain(s).</li>
           </ul>
           <p>Please sign in with any Google account to continue.</p>
           <button onClick={() => signIn('google')}>
@@ -517,16 +518,27 @@ export default function Home() {
               <li>Bluesky OAuth was too tricky; generate an <a href="https://bsky.app/settings/app-passwords">app password</a> and supply that.</li>
             </ul>
           </li>
-          <li>Enter your post text in the text area. Use regular English names for people and companies, CrossPoster is going to search the web for their social media handles for you.</li>
-          <li>Upload an image or a video to attach to your post (optional). Videos must be less than 4MB (LinkedIn's limit) and 3 minutes long (Bluesky's limit).</li>
-          <li>Click "Create Drafts" to generate platform-specific versions</li>
-          <li>Review and edit the generated drafts. In particular, check that the mentions go to the right places! Sometimes the web search turns up false positives.</li>
+          <li>Enter your post text in the text area. Use regular English names for people and companies: CrossPoster will search the web for their social media handles for you.</li>
+          <li>Upload an image or a video to attach to your post (optional). Videos must be less than 4MB (LinkedIn's limit) and 3 minutes long (Bluesky's limit).
+            <ul>
+              <li>LinkedIn can actually support larger videos I just haven't added support yet.</li>
+            </ul>
+          </li>
+          <li>Click "Create Drafts" to generate platform-specific versions of your post with @-mentions correctly added.</li>
+          <li>Review and edit the generated drafts. Check that it found the right handles! Sometimes the web search turns up false positives.</li>
           <li>Post to each platform using the "Post to..." buttons</li>
+        </ul>
+        <h2>UTM parameters</h2>
+        <ul>
+          <li>If you want to track traffic driven by your posts, you can set up UTM rules that will automatically add UTM parameters to the domains you specify. See the UTM Rules tab for full instructions.</li>
         </ul>
         <h2>Limitations and Caveats</h2>
         <ul>
           <li>You can only attach one image per post right now.</li>
-          <li>Video attachments are not currently supported.</li>
+          <li>Twitter assumes you are paying for long posts, so it does not shorten to 280 characters for you.</li>
+          <li>LinkedIn will get confused if you try to @-mention more than 3 companies in a single post.</li>
+          <li>LinkedIn video posts can take a few minutes to actually be accessible after posting.</li>
+          <li>BlueSky doesn't like images over 1MB. I usually post full images to the other two then drag a smaller image for BlueSky and post that.</li>          
         </ul>
       </div>
     );
