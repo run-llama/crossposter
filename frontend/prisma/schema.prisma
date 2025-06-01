@@ -15,4 +15,5 @@ model users {
   bluesky_token    String? @db.VarChar
   mastodon_token   String? @db.VarChar
   linkedin_company String? @db.VarChar
+  utm_rules        Json?   @db.Json
 }

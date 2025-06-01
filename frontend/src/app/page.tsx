@@ -22,6 +22,13 @@ interface BlueskyPostResponse {
   url: string;
 }
 
+type DomainRule = {
+  domain: string;
+  source: string;
+  medium: string;
+  campaign: string;
+};
+
 export default function Home() {
   const { data: session, status } = useSession();
   const dialogRef = useRef<HTMLDialogElement>(null) as React.RefObject<HTMLDialogElement>;
@@ -42,6 +49,14 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState('app');
   const [isDrafting, setIsDrafting] = useState(false);
   const [isPosting, setIsPosting] = useState<{ [platform: string]: boolean }>({});
+  const [newDomain, setNewDomain] = useState<DomainRule>({
+    domain: '',
+    source: '',
+    medium: '',
+    campaign: ''
+  });
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [editingRow, setEditingRow] = useState<DomainRule | null>(null);
   
   // Memoize object URL for video preview
   const videoUrl = useMemo(() => {
@@ -485,6 +500,223 @@ export default function Home() {
     );
   };
 
+  const renderUTMRulesContent = (
+    newDomain: DomainRule,
+    setNewDomain: React.Dispatch<React.SetStateAction<DomainRule>>,
+    editingIdx: number | null,
+    setEditingIdx: React.Dispatch<React.SetStateAction<number | null>>,
+    editingRow: DomainRule | null,
+    setEditingRow: React.Dispatch<React.SetStateAction<DomainRule | null>>
+  ) => {
+    // Parse user['utm_rules'] as JSON if present
+    let utmRulesObj: { domains: DomainRule[] } = { domains: [] };
+    try {
+      if (user && user['utm_rules']) {
+        utmRulesObj = JSON.parse(user['utm_rules']);
+      }
+    } catch (e) {
+      // fallback to empty if parsing fails
+      utmRulesObj = { domains: [] };
+    }
+
+    // Save handler for new row
+    const handleSave = async () => {
+      // Don't add if all fields are empty
+      if (!newDomain.domain && !newDomain.source && !newDomain.medium && !newDomain.campaign) return;
+      const updatedRules = {
+        domains: [
+          ...utmRulesObj.domains,
+          { ...newDomain }
+        ]
+      };
+      await fetch('/api/user/save-rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ utm_rules: updatedRules })
+      });
+      setNewDomain({ domain: '', source: '', medium: '', campaign: '' });
+      // Re-fetch user data and update state
+      const response = await fetch('/api/user/fetch');
+      const userData = await response.json();
+      setUser(userData);
+      setEditingIdx(null);
+      setEditingRow(null);
+    };
+
+    // Save handler for editing row
+    const handleEditSave = async (idx: number) => {
+      if (editingRow == null) return;
+      const updatedDomains = utmRulesObj.domains.map((row, i) =>
+        i === idx ? { ...editingRow } : row
+      );
+      const updatedRules = { domains: updatedDomains };
+      await fetch('/api/user/save-rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ utm_rules: updatedRules })
+      });
+      // Re-fetch user data and update state
+      const response = await fetch('/api/user/fetch');
+      const userData = await response.json();
+      setUser(userData);
+      setEditingIdx(null);
+      setEditingRow(null);
+    };
+
+    // Delete handler for a row
+    const handleDelete = async (idx: number) => {
+      const updatedDomains = utmRulesObj.domains.filter((_, i) => i !== idx);
+      const updatedRules = { domains: updatedDomains };
+      await fetch('/api/user/save-rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ utm_rules: updatedRules })
+      });
+      // Re-fetch user data and update state
+      const response = await fetch('/api/user/fetch');
+      const userData = await response.json();
+      setUser(userData);
+      setEditingIdx(null);
+      setEditingRow(null);
+    };
+
+    // Table rendering
+    return (
+      <div className="instructions">
+        <h2>UTM Rules for Link Tracking</h2>
+        <p>
+          UTM parameters are tags you can add to your URLs to track the performance of campaigns and content. When someone clicks a link with UTM parameters, the information is sent to your analytics platform (like Google Analytics), so you can see where your traffic is coming from.
+        </p>
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '2em' }}>
+          <thead>
+            <tr>
+              <th style={{ border: '1px solid #ccc', padding: '8px' }}>Domain</th>
+              <th style={{ border: '1px solid #ccc', padding: '8px' }}>Source</th>
+              <th style={{ border: '1px solid #ccc', padding: '8px' }}>Medium</th>
+              <th style={{ border: '1px solid #ccc', padding: '8px' }}>Campaign</th>
+              <th style={{ border: '1px solid #ccc', padding: '8px' }}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {utmRulesObj.domains.map((row, idx) => (
+              <tr key={row.domain + idx}>
+                <td style={{ border: '1px solid #ccc', padding: '8px' }} onClick={() => {
+                  if (editingIdx !== idx) {
+                    setEditingIdx(idx);
+                    setEditingRow({ ...row });
+                  }
+                }}>
+                  {editingIdx === idx && editingRow ? (
+                    <input
+                      type="text"
+                      value={editingRow.domain}
+                      onChange={e => setEditingRow({ ...editingRow, domain: e.target.value })}
+                      style={{ width: '100%' }}
+                      autoFocus
+                    />
+                  ) : row.domain}
+                </td>
+                <td style={{ border: '1px solid #ccc', padding: '8px' }} onClick={() => {
+                  if (editingIdx !== idx) {
+                    setEditingIdx(idx);
+                    setEditingRow({ ...row });
+                  }
+                }}>
+                  {editingIdx === idx && editingRow ? (
+                    <input
+                      type="text"
+                      value={editingRow.source}
+                      onChange={e => setEditingRow({ ...editingRow, source: e.target.value })}
+                      style={{ width: '100%' }}
+                    />
+                  ) : row.source}
+                </td>
+                <td style={{ border: '1px solid #ccc', padding: '8px' }} onClick={() => {
+                  if (editingIdx !== idx) {
+                    setEditingIdx(idx);
+                    setEditingRow({ ...row });
+                  }
+                }}>
+                  {editingIdx === idx && editingRow ? (
+                    <input
+                      type="text"
+                      value={editingRow.medium}
+                      onChange={e => setEditingRow({ ...editingRow, medium: e.target.value })}
+                      style={{ width: '100%' }}
+                    />
+                  ) : row.medium}
+                </td>
+                <td style={{ border: '1px solid #ccc', padding: '8px' }} onClick={() => {
+                  if (editingIdx !== idx) {
+                    setEditingIdx(idx);
+                    setEditingRow({ ...row });
+                  }
+                }}>
+                  {editingIdx === idx && editingRow ? (
+                    <input
+                      type="text"
+                      value={editingRow.campaign}
+                      onChange={e => setEditingRow({ ...editingRow, campaign: e.target.value })}
+                      style={{ width: '100%' }}
+                    />
+                  ) : row.campaign}
+                </td>
+                <td style={{ border: '1px solid #ccc', padding: '8px', textAlign: 'center' }}>
+                  {editingIdx === idx ? (
+                    <button type="button" onClick={() => handleEditSave(idx)}>Save</button>
+                  ) : (
+                    <button type="button" onClick={() => handleDelete(idx)}>Delete</button>
+                  )}
+                </td>
+              </tr>
+            ))}
+            <tr>
+              <td style={{ border: '1px solid #ccc', padding: '8px' }}>
+                <input
+                  type="text"
+                  value={newDomain.domain}
+                  onChange={e => setNewDomain({ ...newDomain, domain: e.target.value })}
+                  placeholder="Domain"
+                  style={{ width: '100%' }}
+                />
+              </td>
+              <td style={{ border: '1px solid #ccc', padding: '8px' }}>
+                <input
+                  type="text"
+                  value={newDomain.source}
+                  onChange={e => setNewDomain({ ...newDomain, source: e.target.value })}
+                  placeholder="Source"
+                  style={{ width: '100%' }}
+                />
+              </td>
+              <td style={{ border: '1px solid #ccc', padding: '8px' }}>
+                <input
+                  type="text"
+                  value={newDomain.medium}
+                  onChange={e => setNewDomain({ ...newDomain, medium: e.target.value })}
+                  placeholder="Medium"
+                  style={{ width: '100%' }}
+                />
+              </td>
+              <td style={{ border: '1px solid #ccc', padding: '8px' }}>
+                <input
+                  type="text"
+                  value={newDomain.campaign}
+                  onChange={e => setNewDomain({ ...newDomain, campaign: e.target.value })}
+                  placeholder="Campaign"
+                  style={{ width: '100%' }}
+                />
+              </td>
+              <td style={{ border: '1px solid #ccc', padding: '8px', textAlign: 'center' }}>
+                <button type="button" onClick={handleSave}>Save</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
   return (
     <div id="main">
       <h1>CrossPoster</h1>
@@ -514,10 +746,20 @@ export default function Home() {
         >
           Instructions
         </button>
+        {session && (
+          <button
+            className={activeTab === 'utm' ? 'active' : ''}
+            onClick={() => setActiveTab('utm')}
+          >
+            UTM Rules
+          </button>
+        )}
       </div>
 
       <div className="tab-content">
-        {activeTab === 'app' ? renderAppContent() : renderInstructionsContent()}
+        {activeTab === 'app' ? renderAppContent() :
+          activeTab === 'instructions' ? renderInstructionsContent() :
+          (session && activeTab === 'utm' ? renderUTMRulesContent(newDomain, setNewDomain, editingIdx, setEditingIdx, editingRow, setEditingRow) : null)}
       </div>
 
       <div className="footer">
