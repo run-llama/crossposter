@@ -428,7 +428,7 @@ export async function GET(request: Request) {
 
                 // bluesky needs to be rephrased if it's over 300 characters
                 if (drafts.bluesky.length > 300) {
-                    const response = await Settings.llm.complete({
+                    const response = await llm.complete({
                         prompt: `
                             This bluesky draft is too long. Rephrase it be at 300 characters or less.
                             As much as possible, maintain @-mentions. The post likely ends with a URL, 
